@@ -46,7 +46,7 @@ st.markdown("""
 # 创建三个标签页
 tab1, tab_diag, tab2 = st.tabs(["🏥 班级实时学情分析", "🔬 数据连接诊断", "📝 学生答题"])
 
-# ================= 教师端：学情看板收官版 =================
+# ================= 教师端：学情看板（已修复） =================
 with tab1:
     st.title("🏥 班级实时学情分析")
     
@@ -54,21 +54,30 @@ with tab1:
         headers = {"Authorization": f"Bearer {PERSONAL_ACCESS_TOKEN}", "Content-Type": "application/json"}
         try:
             with st.spinner("正在从云端读取统计结果..."):
-                res = requests.post(API_URL, headers=headers, json={"workflow_id": WORKFLOW_ID})
-                st.write("调试信息 - API返回的内容:", res.json()) # 这一行能看到真相
+                # 修复1：添加必要的参数
+                payload = {
+                    "workflow_id": WORKFLOW_ID,
+                    "parameters": {
+                        "input_list": []  # 根据工作流需要，可能需要调整
+                    }
+                }
+                res = requests.post(API_URL, headers=headers, json=payload)
                 res_data = res.json()
                 
-                # 1. 解析外层响应
+                # 调试信息（可以注释掉）
+                # st.write("调试信息 - API返回的内容:", res_data)
+                
+                # 修复2：正确解析嵌套的JSON字符串
                 raw_content = res_data.get("data", "{}")
                 data_obj = json.loads(raw_content) if isinstance(raw_content, str) else raw_content
                 
-                # 2. 核心：精准抓取你刚才展示的 report_data 结构
+                # 修复3：关键修改 - 使用 report_data 而不是 stat_data
                 s = data_obj.get("report_data", {})
                 
                 total = s.get("total", 0)
                 
                 if total > 0:
-                    st.balloons() # 庆祝一下！
+                    st.balloons()
                     
                     # --- 第一行：核心指标卡 ---
                     m1, m2, m3 = st.columns(3)
@@ -104,15 +113,18 @@ with tab1:
                         st.plotly_chart(fig_bar, use_container_width=True)
                         
                 else:
-                    st.warning("⚠️ 云端数据已通，但当前统计人数为 0。")
+                    st.warning("⚠️ 当前统计人数为 0。这可能是因为：\n"
+                              "1. 数据库中没有学生答题记录\n"
+                              "2. 工作流中的数据源节点（SQL查询）返回为空\n"
+                              "3. 请到「数据连接诊断」标签页查看详细信息")
                     
         except Exception as e:
             st.error(f"❌ 渲染看板失败: {e}")
 
-# ================= 4. 新增：数据连接诊断 TAB =================
+# ================= 4. 诊断 TAB（已修复） =================
 with tab_diag:
     st.header("🔬 后端数据链路测试")
-    st.write("当教师端不出图时，请点此按钮排查原因。")
+    st.write("当教师端显示人数为0时，请点此按钮排查原因。")
     
     if st.button('🔍 执行深度诊断'):
         headers = {
@@ -122,9 +134,15 @@ with tab_diag:
         
         with st.status("正在联系扣子工作流...", expanded=True) as status:
             try:
+                # 修复1：添加参数
+                payload = {
+                    "workflow_id": WORKFLOW_ID,
+                    "parameters": {"input_list": []}
+                }
+                
                 # 步骤 1: 发送请求
                 st.write("正在发送 API 请求至 Coze...")
-                res = requests.post(API_URL, headers=headers, json={"workflow_id": WORKFLOW_ID})
+                res = requests.post(API_URL, headers=headers, json=payload)
                 res_json = res.json()
                 
                 # 步骤 2: 显示原始报文
@@ -134,24 +152,33 @@ with tab_diag:
                 # 步骤 3: 解析内容
                 raw_data = res_json.get("data", "{}")
                 data_obj = json.loads(raw_data) if isinstance(raw_data, str) else raw_data
+                
+                # 修复2：使用 report_data
                 report = data_obj.get("report_data", None)
                 
                 if report:
-                    st.success(f"🎊 抓取成功！发现 {len(report)} 条报表记录。")
+                    st.success(f"🎊 抓取成功！统计结果如下：")
                     st.write("报表详情：", report)
+                    
+                    # 添加智能诊断建议
+                    if report.get("total", 0) == 0:
+                        st.warning("🔍 **诊断建议**:\n"
+                                  "1. 请检查工作流中的「SQL查询节点」是否返回了数据\n"
+                                  "2. 登录Coze平台，打开下方的debug_url查看详细执行日志\n"
+                                  f"3. Debug链接: {res_json.get('debug_url', '无')}")
                 else:
-                    st.warning("⚠️ 接口通了，但 report_data 字段是空的。请检查扣子工作流是否正确查询了数据库。")
+                    st.warning("⚠️ 接口通了，但 report_data 字段是空的。")
                 
                 status.update(label="诊断完成", state="complete")
             except Exception as e:
                 st.error(f"❌ 诊断过程崩溃: {str(e)}")
                 status.update(label="诊断出错", state="error")
 
-# ================= 5. 学生端：字体放大版 =================
+# ================= 5. 学生端（保持不变） =================
 with tab2:
     st.title("📝 学生答题")
     
-    # 使用Coze Web SDK的正确方式，并调大字体
+    # 使用Coze Web SDK，调大字体
     chat_html = f"""
     <!DOCTYPE html>
     <html>
@@ -282,7 +309,6 @@ with tab2:
                                         border-radius: 8px !important;
                                     }}
                                 `,
-                                // 桌面端字体更大
                                 ...(window.innerWidth > 768 ? {{
                                     customCss: `
                                         .markdown-body,
@@ -330,5 +356,5 @@ with tab2:
     </html>
     """
     
-    # 显示聊天界面 - 调高了高度
+    # 显示聊天界面
     components.html(chat_html, height=750)
