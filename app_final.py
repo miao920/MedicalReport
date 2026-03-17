@@ -1,9 +1,15 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import requests  # 用于HTTP请求
+import json      # 用于JSON解析
+import pandas as pd  # 用于数据处理
+import plotly.express as px  # 用于图表
 
 # ================= 1. 核心配置 =================
 PERSONAL_ACCESS_TOKEN = st.secrets["COZE_TOKEN"]
+WORKFLOW_ID = "7617931269947506729"
 BOT_ID = "7617094528700530742"
+API_URL = "https://api.coze.cn/v1/workflow/run"
 
 st.set_page_config(layout="wide", page_title="病生实时学情系统")
 
