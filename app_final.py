@@ -92,8 +92,8 @@ with tab2:
     st.info("💡 提示：点击下方按钮将进入全屏答题模式，体验更佳。")
     
     # 采用扣子商店链接，确保手机全屏且输入法兼容
-    coze_url = "https://www.coze.cn/store/bot/7617094528700530742"
+    coze_url = "https://www.coze.cn/store/agent/7617094528700530742?bot_id=true"
 
     st.link_button("🚀 点击进入 AI 批改教室", coze_url, use_container_width=True, type="primary")
     st.write("")
-    st.warning("⚠️ 答题须知：请输入学号后开始。完成后，老师在大屏点刷新即可看到结果。")
+    st.warning("⚠️ 答题须知：请直接输入答案。完成后，老师在大屏点刷新即可看到结果。")
