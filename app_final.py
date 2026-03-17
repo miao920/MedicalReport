@@ -53,27 +53,44 @@ with tab1:
     if st.button('🔄 刷新统计看板', type="primary"):
         headers = {"Authorization": f"Bearer {PERSONAL_ACCESS_TOKEN}", "Content-Type": "application/json"}
         try:
-            with st.spinner("正在从云端读取统计结果..."):
-                # 修复1：添加必要的参数
-                payload = {
-                    "workflow_id": WORKFLOW_ID,
-                    "parameters": {
-                        "input_list": []  # 根据工作流需要，可能需要调整
-                    }
+               try:
+        with st.spinner("正在从云端读取统计结果..."):
+            # 修复1：添加必要的参数
+            payload = {
+                "workflow_id": WORKFLOW_ID,
+                "parameters": {
+                    "input_list": []  # 根据工作流需要，可能需要调整
                 }
-                res = requests.post(API_URL, headers=headers, json=payload)
-                res_data = res.json()
-                
-                # 调试信息（可以注释掉）
-                # st.write("调试信息 - API返回的内容:", res_data)
-                
-                # 修复2：正确解析嵌套的JSON字符串
-                raw_content = res_data.get("data", "{}")
-                data_obj = json.loads(raw_content) if isinstance(raw_content, str) else raw_content
-                
-                # 修复3：关键修改 - 使用 report_data 而不是 stat_data
-                s = data_obj.get("report_data", {})
-                
+            }
+            
+            # ===== 在这里添加调试代码 =====
+            st.write("📤 **发送的请求:**")
+            st.json(payload)  # 显示发送的请求参数
+            
+            st.write("🔗 **API地址:**", API_URL)
+            st.write("🆔 **Workflow ID:**", WORKFLOW_ID)
+            # ===== 调试代码结束 =====
+            
+            res = requests.post(API_URL, headers=headers, json=payload)
+            
+            # ===== 在这里添加响应调试 =====
+            st.write("📥 **收到的原始响应:**")
+            st.json(res.json())  # 显示完整的API响应
+            # ===== 调试代码结束 =====
+            
+            res_data = res.json()
+            
+            # 修复2：正确解析嵌套的JSON字符串
+            raw_content = res_data.get("data", "{}")
+            st.write("📦 **原始data字段:**", raw_content)  # 再看一下data字段
+            
+            data_obj = json.loads(raw_content) if isinstance(raw_content, str) else raw_content
+            
+            # 修复3：使用 report_data
+            s = data_obj.get("report_data", {})
+            
+            st.write("📊 **解析后的report_data:**", s)  # 最后看解析结果
+                        
                 total = s.get("total", 0)
                 
                 if total > 0:
