@@ -43,7 +43,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-tab1, tab2 = st.tabs(["📊 教师统计", "📝 学生答题"])
+# 创建三个标签页
+tab1, tab_diag, tab2 = st.tabs(["🏥 班级实时学情分析", "🔬 数据连接诊断", "📝 学生答题"])
 
 # ================= 3. 教师端：学情统计逻辑 =================
 with tab1:
@@ -127,7 +128,45 @@ with tab1:
         except Exception as e:
             st.error(f"❌ 数据解析失败: {str(e)}")
 
-# ================= 4. 学生端：字体放大版 =================
+# ================= 4. 新增：数据连接诊断 TAB =================
+with tab_diag:
+    st.header("🔬 后端数据链路测试")
+    st.write("当教师端不出图时，请点此按钮排查原因。")
+    
+    if st.button('🔍 执行深度诊断'):
+        headers = {
+            "Authorization": f"Bearer {PERSONAL_ACCESS_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        with st.status("正在联系扣子工作流...", expanded=True) as status:
+            try:
+                # 步骤 1: 发送请求
+                st.write("正在发送 API 请求至 Coze...")
+                res = requests.post(API_URL, headers=headers, json={"workflow_id": WORKFLOW_ID})
+                res_json = res.json()
+                
+                # 步骤 2: 显示原始报文
+                st.write("✅ 接口通讯成功，收到原始包裹：")
+                st.code(json.dumps(res_json, indent=2, ensure_ascii=False))
+                
+                # 步骤 3: 解析内容
+                raw_data = res_json.get("data", "{}")
+                data_obj = json.loads(raw_data) if isinstance(raw_data, str) else raw_data
+                report = data_obj.get("report_data", None)
+                
+                if report:
+                    st.success(f"🎊 抓取成功！发现 {len(report)} 条报表记录。")
+                    st.write("报表详情：", report)
+                else:
+                    st.warning("⚠️ 接口通了，但 report_data 字段是空的。请检查扣子工作流是否正确查询了数据库。")
+                
+                status.update(label="诊断完成", state="complete")
+            except Exception as e:
+                st.error(f"❌ 诊断过程崩溃: {str(e)}")
+                status.update(label="诊断出错", state="error")
+
+# ================= 5. 学生端：字体放大版 =================
 with tab2:
     st.title("📝 学生答题")
     
