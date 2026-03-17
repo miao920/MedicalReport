@@ -46,68 +46,76 @@ st.markdown("""
 # 创建三个标签页
 tab1, tab_diag, tab2 = st.tabs(["🏥 班级实时学情分析", "🔬 数据连接诊断", "📝 学生答题"])
 
-# ================= 教师端：学情看板（已修复） =================
+# ================= 教师端：学情看板（完整修正版） =================
 with tab1:
     st.title("🏥 班级实时学情分析")
     
     if st.button('🔄 刷新统计看板', type="primary"):
         headers = {"Authorization": f"Bearer {PERSONAL_ACCESS_TOKEN}", "Content-Type": "application/json"}
         try:
-               try:
-        with st.spinner("正在从云端读取统计结果..."):
-            # 修复1：添加必要的参数
-            payload = {
-                "workflow_id": WORKFLOW_ID,
-                "parameters": {
-                    "input_list": []  # 根据工作流需要，可能需要调整
+            with st.spinner("正在从云端读取统计结果..."):
+                # 1. 构建请求参数
+                payload = {
+                    "workflow_id": WORKFLOW_ID,
+                    "parameters": {
+                        "input_list": []  # 工作流需要的输入参数
+                    }
                 }
-            }
-            
-            # ===== 在这里添加调试代码 =====
-            st.write("📤 **发送的请求:**")
-            st.json(payload)  # 显示发送的请求参数
-            
-            st.write("🔗 **API地址:**", API_URL)
-            st.write("🆔 **Workflow ID:**", WORKFLOW_ID)
-            # ===== 调试代码结束 =====
-            
-            res = requests.post(API_URL, headers=headers, json=payload)
-            
-            # ===== 在这里添加响应调试 =====
-            st.write("📥 **收到的原始响应:**")
-            st.json(res.json())  # 显示完整的API响应
-            # ===== 调试代码结束 =====
-            
-            res_data = res.json()
-            
-            # 修复2：正确解析嵌套的JSON字符串
-            raw_content = res_data.get("data", "{}")
-            st.write("📦 **原始data字段:**", raw_content)  # 再看一下data字段
-            
-            data_obj = json.loads(raw_content) if isinstance(raw_content, str) else raw_content
-            
-            # 修复3：使用 report_data
-            s = data_obj.get("report_data", {})
-            
-            st.write("📊 **解析后的report_data:**", s)  # 最后看解析结果
-                        
+                
+                # 2. 调试信息：显示发送的请求
+                st.write("### 🔍 调试信息")
+                st.write("**发送的请求:**")
+                st.json(payload)
+                
+                # 3. 调用API
+                res = requests.post(API_URL, headers=headers, json=payload)
+                res_data = res.json()
+                
+                # 4. 调试信息：显示原始响应
+                st.write("**API原始响应:**")
+                st.json(res_data)
+                
+                # 5. 解析数据
+                raw_content = res_data.get("data", "{}")
+                st.write("**data字段原始内容:**", raw_content)
+                
+                # 处理可能是字符串的JSON
+                if isinstance(raw_content, str):
+                    data_obj = json.loads(raw_content)
+                else:
+                    data_obj = raw_content
+                
+                # 6. 获取统计结果（关键：这里用 report_data）
+                s = data_obj.get("report_data", {})
+                
+                st.write("**解析后的统计结果:**", s)
+                
                 total = s.get("total", 0)
                 
+                # 7. 如果有数据，显示图表
                 if total > 0:
                     st.balloons()
                     
                     # --- 第一行：核心指标卡 ---
-                    m1, m2, m3 = st.columns(3)
-                    m1.metric("累计提交人数", f"{total} 人")
-                    pass_n = s.get("l1", 0) + s.get("l2", 0) + s.get("l3", 0)
-                    m2.metric("及格人数", f"{pass_n} 人")
-                    m3.metric("及格率", f"{(pass_n/total*100):.1f}%")
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.metric("累计提交人数", f"{total} 人")
+                    
+                    with col2:
+                        pass_n = s.get("l1", 0) + s.get("l2", 0) + s.get("l3", 0)
+                        st.metric("及格人数", f"{pass_n} 人")
+                    
+                    with col3:
+                        pass_rate = (pass_n / total * 100) if total > 0 else 0
+                        st.metric("及格率", f"{pass_rate:.1f}%")
                     
                     st.markdown("---")
                     
                     # --- 第二行：可视化图表 ---
-                    c1, c2 = st.columns(2)
-                    with c1:
+                    chart1, chart2 = st.columns(2)
+                    
+                    with chart1:
                         # 成绩分布饼图
                         fig_pie = px.pie(
                             names=["L0(不及格)", "L1(及格)", "L2(良好)", "L3(优秀)"],
@@ -118,7 +126,7 @@ with tab1:
                         )
                         st.plotly_chart(fig_pie, use_container_width=True)
                     
-                    with c2:
+                    with chart2:
                         # 知识点缺失柱状图
                         fig_bar = px.bar(
                             x=["ADH缺失", "ANP缺失", "RAAS缺失"],
@@ -128,15 +136,21 @@ with tab1:
                             color_discrete_sequence=['#F63366']
                         )
                         st.plotly_chart(fig_bar, use_container_width=True)
-                        
+                    
+                    # --- 第三行：详细数据表格（可选）---
+                    with st.expander("📋 查看详细统计数据"):
+                        st.write("### 完整统计结果")
+                        st.json(s)
+                
                 else:
                     st.warning("⚠️ 当前统计人数为 0。这可能是因为：\n"
                               "1. 数据库中没有学生答题记录\n"
                               "2. 工作流中的数据源节点（SQL查询）返回为空\n"
-                              "3. 请到「数据连接诊断」标签页查看详细信息")
+                              "3. 请查看上面的调试信息，确认API返回内容")
                     
         except Exception as e:
-            st.error(f"❌ 渲染看板失败: {e}")
+            st.error(f"❌ 渲染看板失败: {str(e)}")
+            st.error("请检查：\n1. Coze Token是否有效\n2. 工作流ID是否正确\n3. 网络连接是否正常")
 
 # ================= 4. 诊断 TAB（已修复） =================
 with tab_diag:
