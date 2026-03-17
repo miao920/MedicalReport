@@ -55,6 +55,7 @@ with tab1:
         try:
             with st.spinner("正在从云端读取统计结果..."):
                 res = requests.post(API_URL, headers=headers, json={"workflow_id": WORKFLOW_ID})
+                st.write("调试信息 - API返回的内容:", res.json()) # 这一行能看到真相
                 res_data = res.json()
                 
                 # 1. 解析外层响应
