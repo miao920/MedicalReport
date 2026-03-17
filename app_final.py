@@ -55,7 +55,9 @@ with tab1:
         try:
             with st.spinner("正在从云端读取统计结果..."):
                 # 1. 构建请求参数
-                payload = {"workflow_id": WORKFLOW_ID}
+                payload = { "workflow_id": WORKFLOW_ID,"version": "latest",  # 强制最新版
+    "parameters": {}
+}
                
                 # 2. 调试信息：显示发送的请求
                 st.write("### 🔍 调试信息")
