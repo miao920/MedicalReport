@@ -108,50 +108,21 @@ with tab1:
         except Exception as e:
             st.error(f"连接扣子失败: {str(e)}")
 
-# ================= 4. 学生端：全屏弹窗优化版 =================
+# ================= 4. 学生端：终极稳定版 =================
 with tab2:
     st.header("📝 病理生理学练习批改")
-    st.write("点击下方按钮开始练习，AI 将实时为您批改。")
     
-    # 使用 SDK 的“触发模式”而非“内嵌模式”
-    chat_sdk_html = f"""
-    <script src="https://lf-cdn.coze.cn/obj/unpkg/flow-platform/chat-app-sdk/1.2.0-beta.19/libs/cn/index.js"></script>
-    <div id="btn-container" style="display: flex; justify-content: center; padding-top: 50px;">
-        <button id="start-chat" style="
-            background-color: #ff4b4b; 
-            color: white; 
-            border: none; 
-            padding: 20px 40px; 
-            font-size: 24px; 
-            border-radius: 50px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            cursor: pointer;
-        ">🚀 点击开始答题</button>
-    </div>
+    st.info("💡 提示：点击下方按钮将进入全屏答题模式，体验更佳。")
+    
+    # 这里填入你的扣子 Bot 的【发布平台 -> Web SDK】里的那个“已发布”的短链接
+    # 如果你没有短链接，可以用我下面构造的这个
+    coze_url = f"https://www.coze.cn/store/bot/{BOT_ID}"
 
-    <script>
-      const client = new CozeWebSDK.WebChatClient({{
-        config: {{
-          bot_id: '{BOT_ID}',
-        }},
-        componentProps: {{
-          title: '医学批改助手',
-        }},
-        auth: {{
-          type: 'token',
-          token: '{PERSONAL_ACCESS_TOKEN}',
-          onRefreshToken: function () {{
-            return '{PERSONAL_ACCESS_TOKEN}'
-          }}
-        }}
-      }});
+    # 创建一个醒目的大按钮
+    st.link_button("🚀 点击进入 AI 批改教室", coze_url, use_container_width=True, type="primary")
 
-      // 给按钮绑定事件：点击后调出全屏对话框
-      document.getElementById('start-chat').addEventListener('click', () => {{
-          client.show(); // 关键指令：显示对话框
-      }});
-    </script>
-    """
+    st.write("")
+    st.warning("⚠️ 答题须知：请输入学号后开始，完成后点击电脑大屏的刷新按钮查看结果。")
     
     # 这里的 height 给小一点，只要够放下按钮就行
     components.html(chat_sdk_html, height=300)
