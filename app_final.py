@@ -46,94 +46,66 @@ st.markdown("""
 # 创建三个标签页
 tab1, tab_diag, tab2 = st.tabs(["🏥 班级实时学情分析", "🔬 数据连接诊断", "📝 学生答题"])
 
-# ================= 3. 教师端：学情统计逻辑 =================
+# ================= 3. 教师统计大屏（最终匹配版） =================
 with tab1:
     st.title("🏥 班级实时学情分析")
-    
-    if st.button('🔄 刷新全班最新数据', type="primary"):
-        headers = {
-            "Authorization": f"Bearer {PERSONAL_ACCESS_TOKEN}",
-            "Content-Type": "application/json"
-        }
-        
+    if st.button('🔄 刷新统计图表', type="primary"):
+        headers = {"Authorization": f"Bearer {PERSONAL_ACCESS_TOKEN}", "Content-Type": "application/json"}
         try:
-            with st.spinner("正在同步数据库最新记录..."):
+            with st.spinner("正在同步最新 12 条数据..."):
                 res = requests.post(API_URL, headers=headers, json={"workflow_id": WORKFLOW_ID})
-
-               # ========== 新增调试代码开始 ==========
-                st.write("### 🔍 调试信息")
-                st.write(f"**状态码:** {res.status_code}")
-                st.write("**原始返回:**")
-                st.code(res.text, language="json")
-                # ========== 新增调试代码结束 ==========
-                res_json = res.json()
+                res_data = res.json()
                 
-                # 1. 深度解析：处理可能存在的字符串嵌套
-                raw_data = res_json.get("data", "{}")
-                data_obj = json.loads(raw_data) if isinstance(raw_data, str) else raw_data
-                report = data_obj.get("report_data", [])
+                # 核心逻辑：从 res_data["data"] 中解析出 outputList
+                raw_content = res_data.get("data", "{}")
+                data_obj = json.loads(raw_content) if isinstance(raw_content, str) else raw_content
+                
+                # 修改点：匹配您刚才截图中的 outputList 字段
+                report = data_obj.get("outputList", [])
                 
                 if report and len(report) > 0:
-                    # 获取第一条报表数据
-                    raw_s = report[0]
-                    
-                    # 💡 核心修复：模糊匹配逻辑 (不分大小写，自动找关键词)
-                    def get_val(keywords, default=0):
-                        for k, v in raw_s.items():
-                            if any(word.lower() in k.lower() for word in keywords):
-                                return int(v) if str(v).isdigit() else 0
-                        return default
+                    # 清洗数据：处理 null 和 字符串
+                    def clean(v):
+                        if v is None or v == "": return 0
+                        return int(v) if str(v).isdigit() else 0
 
-                    # 重新提取数据（即便工作流改了名也能识别）
-                    s = {
-                        "total": get_val(["total", "sum", "count"]),
-                        "l0": get_val(["level0", "l0"]),
-                        "l1": get_val(["level1", "l1"]),
-                        "l2": get_val(["level2", "l2"]),
-                        "l3": get_val(["level3", "l3"]),
-                        "adh": get_val(["adh", "miss_adh"]),
-                        "anp": get_val(["anp", "miss_anp"]),
-                        "raas": get_val(["raas", "miss_raas"])
-                    }
-
-                    # 2. 渲染核心指标
-                    m1, m2, m3 = st.columns(3)
-                    m1.metric("已提交人数", f"{s['total']} 人")
+                    s = {k: clean(v) for k, v in report[0].items()}
+                    total = s.get('total_answers', 0)
                     
-                    pass_total = s['l1'] + s['l2'] + s['l3']
-                    rate = (pass_total / s['total'] * 100) if s['total'] > 0 else 0
-                    m2.metric("综合及格率", f"{rate:.1f}%")
-                    
-                    miss_list = {"ADH": s['adh'], "ANP": s['anp'], "RAAS": s['raas']}
-                    weak = max(miss_list, key=miss_list.get) if s['total'] > 0 else "无"
-                    m3.metric("最薄弱环节", weak)
-
-                    # 3. 渲染可视化图表
-                    st.markdown("---")
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        fig_pie = px.pie(
-                            names=["极差(L0)", "及格(L1)", "良好(L2)", "优秀(L3)"],
-                            values=[s['l0'], s['l1'], s['l2'], s['l3']],
-                            title="成绩分布状况",
-                            hole=0.4,
-                            color_discrete_sequence=px.colors.qualitative.Pastel
-                        )
-                        st.plotly_chart(fig_pie, use_container_width=True)
-                    with c2:
-                        fig_bar = px.bar(
-                            x=["ADH缺失", "ANP缺失", "RAAS缺失"],
-                            y=[s['adh'], s['anp'], s['raas']],
-                            title="机制薄弱项排查",
-                            labels={'x':'病生机制', 'y':'人数'},
-                            color_discrete_sequence=['#FF4B4B']
-                        )
-                        st.plotly_chart(fig_bar, use_container_width=True)
+                    if total > 0:
+                        # 1. 指标卡片
+                        col1, col2, col3 = st.columns(3)
+                        col1.metric("累计提交", f"{total} 人")
+                        pass_count = s.get('level1',0) + s.get('level2',0) + s.get('level3',0)
+                        col2.metric("综合及格率", f"{(pass_count/total*100):.1f}%")
+                        col3.metric("待改进(L0)", f"{s.get('level0',0)} 人")
+                        
+                        # 2. 可视化图表
+                        st.markdown("---")
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            fig_pie = px.pie(
+                                names=["极差(L0)", "及格(L1)", "良好(L2)", "优秀(L3)"],
+                                values=[s.get('level0',0), s.get('level1',0), s.get('level2',0), s.get('level3',0)],
+                                title="成绩分布状况",
+                                color_discrete_sequence=px.colors.qualitative.Pastel
+                            )
+                            st.plotly_chart(fig_pie, use_container_width=True)
+                        with c2:
+                            fig_bar = px.bar(
+                                x=["ADH缺失", "ANP缺失", "RAAS缺失"],
+                                y=[s.get('miss_adh',0), s.get('miss_anp',0), s.get('miss_raas',0)],
+                                title="病生机制薄弱项统计",
+                                labels={'x':'知识点', 'y':'人数'},
+                                color_discrete_sequence=['#FF4B4B']
+                            )
+                            st.plotly_chart(fig_bar, use_container_width=True)
+                    else:
+                        st.warning("查到了报表，但统计人数为 0。")
                 else:
-                    st.warning("📊 连接成功，但后端数据库反馈目前提交记录为 0。请确认学生是否已成功点击“提交”。")
-                    
+                    st.error("❌ 未能在 outputList 中找到数据，请检查诊断页原始包裹。")
         except Exception as e:
-            st.error(f"❌ 数据解析失败: {str(e)}")
+            st.error(f"渲染失败: {e}")
 
 # ================= 4. 新增：数据连接诊断 TAB =================
 with tab_diag:
