@@ -126,20 +126,20 @@ with tab2:
                                     .chat-bubble,
                                     .rcw-message,
                                     div[class*="message"] {{
-                                        font-size: 18px !important;
+                                        font-size: 20px !important;
                                         line-height: 1.6 !important;
                                     }}
                                     
                                     /* 用户消息字体 */
                                     div[class*="message-user"],
                                     div[class*="client"] .markdown-body {{
-                                        font-size: 18px !important;
+                                        font-size: 20px !important;
                                     }}
                                     
                                     /* AI回复字体 */
                                     div[class*="message-bot"],
                                     div[class*="assistant"] .markdown-body {{
-                                        font-size: 18px !important;
+                                        font-size: 20px !important;
                                     }}
                                     
                                     /* 标题字体 */
@@ -153,7 +153,7 @@ with tab2:
                                     div[class*="input"],
                                     div[class*="Input"],
                                     .rcw-new-message {{
-                                        font-size: 18px !important;
+                                        font-size: 20px !important;
                                         padding: 12px !important;
                                     }}
                                     
