@@ -46,56 +46,72 @@ st.markdown("""
 # 创建三个标签页
 tab1, tab_diag, tab2 = st.tabs(["🏥 班级实时学情分析", "🔬 数据连接诊断", "📝 学生答题"])
 
-# ================= 3.教师端：精准对接版 =================
+# ================= 教师端：精准对接 outputList 版 =================
 with tab1:
     st.title("🏥 班级实时学情分析")
     if st.button('🔄 刷新统计图表', type="primary"):
         headers = {"Authorization": f"Bearer {PERSONAL_ACCESS_TOKEN}", "Content-Type": "application/json"}
         try:
-            with st.spinner("正在从云端调取 12 条最新统计..."):
+            with st.spinner("正在同步 12 条最新数据..."):
                 res = requests.post(API_URL, headers=headers, json={"workflow_id": WORKFLOW_ID})
                 res_data = res.json()
                 
-                # 解析扣子返回的 JSON 字符串
+                # 1. 解析扣子返回的字符串
                 raw_content = res_data.get("data", "{}")
                 data_obj = json.loads(raw_content) if isinstance(raw_content, str) else raw_content
-                report = data_obj.get("report_data", [])
+                
+                # 2. 匹配您刚才展示的 outputList 字段
+                report = data_obj.get("outputList", [])
                 
                 if report and len(report) > 0:
-                    # 清洗函数：将 "" 或 null 转为 0
+                    # 3. 核心：将所有带引号的数字转为整数（处理 "12" -> 12）
                     def clean(v):
-                        if not v or str(v).strip() == "": return 0
-                        return int(v) if str(v).isdigit() else 0
+                        if v is None or v == "": return 0
+                        # 移除可能的空格并转数字
+                        try:
+                            return int(float(str(v).strip()))
+                        except:
+                            return 0
 
                     s = {k: clean(v) for k, v in report[0].items()}
                     total = s.get('total_answers', 0)
                     
                     if total > 0:
-                        st.balloons() # 庆祝数据接通！
+                        st.balloons() # 庆祝通车！
+                        
+                        # 4. 显示数据指标
                         m1, m2, m3 = st.columns(3)
                         m1.metric("累计提交", f"{total} 人")
-                        pass_n = s.get('level1',0) + s.get('level2',0) + s.get('level3',0)
-                        m2.metric("及格以上人数", f"{pass_n} 人")
-                        m3.metric("及格率", f"{(pass_n/total*100):.1f}%")
+                        # 计算及格人数（L1+L2+L3）
+                        pass_n = s.get('level1', 0) + s.get('level2', 0) + s.get('level3', 0)
+                        m2.metric("及格及以上", f"{pass_n} 人")
+                        m3.metric("及格率", f"{(pass_n/total*100):.1f}%" if total > 0 else "0%")
                         
                         st.markdown("---")
                         c1, c2 = st.columns(2)
                         with c1:
-                            fig_pie = px.pie(names=["L0(极差)","L1(及格)","L2(良好)","L3(优秀)"], 
-                                           values=[s.get('level0',0), s.get('level1',0), s.get('level2',0), s.get('level3',0)], 
-                                           title="成绩等级分布", hole=0.3)
+                            fig_pie = px.pie(
+                                names=["极差(L0)", "及格(L1)", "良好(L2)", "优秀(L3)"],
+                                values=[s.get('level0',0), s.get('level1',0), s.get('level2',0), s.get('level3',0)],
+                                title="成绩等级分布",
+                                hole=0.3
+                            )
                             st.plotly_chart(fig_pie, use_container_width=True)
                         with c2:
-                            fig_bar = px.bar(x=["ADH缺失", "ANP缺失", "RAAS缺失"], 
-                                           y=[s.get('miss_adh',0), s.get('miss_anp',0), s.get('miss_raas',0)], 
-                                           title="机制薄弱环节排查", color_discrete_sequence=['#F63366'])
+                            fig_bar = px.bar(
+                                x=["ADH缺失", "ANP缺失", "RAAS缺失"],
+                                y=[s.get('miss_adh',0), s.get('miss_anp',0), s.get('miss_raas',0)],
+                                title="知识点薄弱项统计",
+                                labels={'x':'考察维度', 'y':'错误人数'},
+                                color_discrete_sequence=['#FF4B4B']
+                            )
                             st.plotly_chart(fig_bar, use_container_width=True)
                     else:
-                        st.warning("⚠️ 接口已发布，但数据库反馈统计人数仍为 0，请检查 SQL 节点连接的表是否正确。")
+                        st.warning("查到了数据，但 total_answers 为 0。")
                 else:
-                    st.error("❌ 没能从 report_data 中读到内容，请检查诊断页。")
+                    st.error("❌ 没能在 outputList 中找到数据，请检查发布状态。")
         except Exception as e:
-            st.error(f"渲染出错: {e}")
+            st.error(f"渲染失败: {e}")
 
 # ================= 4. 新增：数据连接诊断 TAB =================
 with tab_diag:
