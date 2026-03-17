@@ -47,8 +47,7 @@ tab1, tab2 = st.tabs(["📊 教师统计", "📝 学生答题"])
 
 # ================= 3. 教师端：学情统计逻辑 =================
 with tab1:
-    st.title("🏥 班级实时学情分析看板")
-    st.info("💡 操作指南：当学生完成提交后，点击下方按钮即可刷新最新的统计图表。")
+    st.title("🏥 班级实时学情分析")
     
     if st.button('🔄 刷新全班最新数据', type="primary"):
         headers = {
@@ -57,103 +56,76 @@ with tab1:
         }
         
         try:
-            with st.spinner("正在连接扣子提取数据..."):
-                # 运行统计工作流
+            with st.spinner("正在同步数据库最新记录..."):
                 res = requests.post(API_URL, headers=headers, json={"workflow_id": WORKFLOW_ID})
-                
-                # ========== 调试信息开始 ==========
-                st.write("### 🔍 调试信息")
-                st.write(f"**状态码:** {res.status_code}")
-                
-                # 显示原始返回
-                st.write("**原始返回:**")
-                st.code(res.text, language="json")
-                
-                # 解析JSON
                 res_json = res.json()
-                st.write("**解析后的JSON:**")
-                st.json(res_json)
                 
-                # 获取data字段
+                # 1. 深度解析：处理可能存在的字符串嵌套
                 raw_data = res_json.get("data", "{}")
-                st.write(f"**raw_data 类型:** {type(raw_data)}")
-                st.write(f"**raw_data 内容:** {raw_data}")
-                
-                # 解析data字段
-                if isinstance(raw_data, str):
-                    try:
-                        data_obj = json.loads(raw_data)
-                        st.write("**data_obj (解析后):**")
-                        st.json(data_obj)
-                    except:
-                        data_obj = {}
-                        st.write("**data_obj 解析失败**")
-                else:
-                    data_obj = raw_data
-                    st.write("**data_obj (直接使用):**")
-                    st.json(data_obj)
-                
-                # 获取report_data
-                report = data_obj.get("report_data", []) if data_obj else []
-                st.write(f"**report_data:** {report}")
-                st.write(f"**report_data 长度:** {len(report)}")
-                # ========== 调试信息结束 ==========
+                data_obj = json.loads(raw_data) if isinstance(raw_data, str) else raw_data
+                report = data_obj.get("report_data", [])
                 
                 if report and len(report) > 0:
-                    # 数据清洗：处理空字符串并转为整数
-                    s = {k: (int(v) if (v and str(v).isdigit()) else 0) for k, v in report[0].items()}
+                    # 获取第一条报表数据
+                    raw_s = report[0]
                     
-                    # 显示清洗后的数据
-                    st.write("**清洗后的数据:**")
-                    st.json(s)
+                    # 💡 核心修复：模糊匹配逻辑 (不分大小写，自动找关键词)
+                    def get_val(keywords, default=0):
+                        for k, v in raw_s.items():
+                            if any(word.lower() in k.lower() for word in keywords):
+                                return int(v) if str(v).isdigit() else 0
+                        return default
+
+                    # 重新提取数据（即便工作流改了名也能识别）
+                    s = {
+                        "total": get_val(["total", "sum", "count"]),
+                        "l0": get_val(["level0", "l0"]),
+                        "l1": get_val(["level1", "l1"]),
+                        "l2": get_val(["level2", "l2"]),
+                        "l3": get_val(["level3", "l3"]),
+                        "adh": get_val(["adh", "miss_adh"]),
+                        "anp": get_val(["anp", "miss_anp"]),
+                        "raas": get_val(["raas", "miss_raas"])
+                    }
+
+                    # 2. 渲染核心指标
+                    m1, m2, m3 = st.columns(3)
+                    m1.metric("已提交人数", f"{s['total']} 人")
                     
-                    # --- A. 核心指标行 ---
-                    m1, m2, m3, m4 = st.columns(4)
-                    total = s.get('total_answers', 0)
-                    m1.metric("已提交人数", f"{total} 人")
-                    
-                    # 计算及格率 (L1+L2+L3)
-                    pass_total = s.get('level1',0) + s.get('level2',0) + s.get('level3',0)
-                    rate = (pass_total / total * 100) if total > 0 else 0
+                    pass_total = s['l1'] + s['l2'] + s['l3']
+                    rate = (pass_total / s['total'] * 100) if s['total'] > 0 else 0
                     m2.metric("综合及格率", f"{rate:.1f}%")
                     
-                    m3.metric("需关注人数(L0)", f"{s.get('level0', 0)} 人")
-                    
-                    # 识别最薄弱环节
-                    miss_dict = {"ADH": s.get('miss_adh',0), "ANP": s.get('miss_anp',0), "RAAS": s.get('miss_raas',0)}
-                    weak_point = max(miss_dict, key=miss_dict.get) if total > 0 and max(miss_dict.values()) > 0 else "暂无"
-                    m4.metric("最薄弱机制", weak_point)
+                    miss_list = {"ADH": s['adh'], "ANP": s['anp'], "RAAS": s['raas']}
+                    weak = max(miss_list, key=miss_list.get) if s['total'] > 0 else "无"
+                    m3.metric("最薄弱环节", weak)
 
+                    # 3. 渲染可视化图表
                     st.markdown("---")
-
-                    # --- B. 可视化图表行 ---
-                    col_l, col_r = st.columns(2)
-                    
-                    with col_l:
-                        # 饼图：成绩分布
-                        df_pie = pd.DataFrame({
-                            "评价等级": ["极差(L0)", "及格(L1)", "良好(L2)", "优秀(L3)"], 
-                            "人数": [s.get('level0',0), s.get('level1',0), s.get('level2',0), s.get('level3',0)]
-                        })
-                        fig_pie = px.pie(df_pie, values='人数', names='评价等级', title="全班成绩等级分布",
-                                       hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        fig_pie = px.pie(
+                            names=["极差(L0)", "及格(L1)", "良好(L2)", "优秀(L3)"],
+                            values=[s['l0'], s['l1'], s['l2'], s['l3']],
+                            title="成绩分布状况",
+                            hole=0.4,
+                            color_discrete_sequence=px.colors.qualitative.Pastel
+                        )
                         st.plotly_chart(fig_pie, use_container_width=True)
-                        
-                    with col_r:
-                        # 柱状图：知识点缺失统计
-                        df_bar = pd.DataFrame({
-                            "病生机制": ["ADH缺失", "ANP缺失", "RAAS缺失"], 
-                            "未掌握人数": [s.get('miss_adh',0), s.get('miss_anp',0), s.get('miss_raas',0)]
-                        })
-                        fig_bar = px.bar(df_bar, x='病生机制', y='未掌握人数', title="知识点薄弱项排查",
-                                       color='未掌握人数', color_continuous_scale='Reds')
+                    with c2:
+                        fig_bar = px.bar(
+                            x=["ADH缺失", "ANP缺失", "RAAS缺失"],
+                            y=[s['adh'], s['anp'], s['raas']],
+                            title="机制薄弱项排查",
+                            labels={'x':'病生机制', 'y':'人数'},
+                            color_discrete_sequence=['#FF4B4B']
+                        )
                         st.plotly_chart(fig_bar, use_container_width=True)
                 else:
-                    st.warning("📊 暂未发现有效数据。请确保：1. 数据库不为空；2. 统计工作流已发布且勾选API。")
+                    st.warning("📊 连接成功，但后端数据库反馈目前提交记录为 0。请确认学生是否已成功点击“提交”。")
+                    
         except Exception as e:
-            st.error(f"连接扣子失败: {str(e)}")
-            st.write("### 错误详情")
-            st.exception(e)  # 显示完整错误堆栈
+            st.error(f"❌ 数据解析失败: {str(e)}")
 
 # ================= 4. 学生端：字体放大版 =================
 with tab2:
