@@ -45,17 +45,17 @@ with tab1:
     if st.button('🔄 刷新数据', type="primary"):
         st.success("数据已刷新")
 
-# ================= 3. 学生端：正确的Web SDK方式 =================
+# ================= 3. 学生端：字体放大版 =================
 with tab2:
     st.title("📝 学生答题")
     
-    # 使用Coze Web SDK的正确方式
+    # 使用Coze Web SDK的正确方式，并调大字体
     chat_html = f"""
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
         <style>
             body, html {{
                 margin: 0;
@@ -80,7 +80,7 @@ with tab2:
                 justify-content: center;
                 align-items: center;
                 height: 100%;
-                font-size: 16px;
+                font-size: 18px;
                 color: #666;
             }}
         </style>
@@ -107,17 +107,102 @@ with tab2:
                         const client = new CozeWebSDK.WebChatClient({{
                             config: {{
                                 bot_id: '{BOT_ID}',
-                                host: 'https://api.coze.cn',  // 使用API地址
+                                host: 'https://api.coze.cn',
                             }},
                             componentProps: {{
                                 title: '病生题库智能体',
-                                layout: 'inline',  // 内联模式
+                                layout: 'inline',
                                 hideTitleBar: false,
                                 height: '100%',
                                 width: '100%',
                                 style: {{
                                     borderRadius: '8px',
-                                }}
+                                }},
+                                // 添加自定义CSS来调大字体
+                                customCss: `
+                                    /* 全局字体调大 */
+                                    .markdown-body,
+                                    .message-content,
+                                    .chat-bubble,
+                                    .rcw-message,
+                                    div[class*="message"] {{
+                                        font-size: 16px !important;
+                                        line-height: 1.6 !important;
+                                    }}
+                                    
+                                    /* 用户消息字体 */
+                                    div[class*="message-user"],
+                                    div[class*="client"] .markdown-body {{
+                                        font-size: 16px !important;
+                                    }}
+                                    
+                                    /* AI回复字体 */
+                                    div[class*="message-bot"],
+                                    div[class*="assistant"] .markdown-body {{
+                                        font-size: 16px !important;
+                                    }}
+                                    
+                                    /* 标题字体 */
+                                    h1, h2, h3, h4 {{
+                                        font-size: 20px !important;
+                                        font-weight: 600 !important;
+                                    }}
+                                    
+                                    /* 输入框字体 */
+                                    input, textarea,
+                                    div[class*="input"],
+                                    div[class*="Input"],
+                                    .rcw-new-message {{
+                                        font-size: 16px !important;
+                                        padding: 12px !important;
+                                    }}
+                                    
+                                    /* 发送按钮 */
+                                    button,
+                                    div[class*="send"],
+                                    .rcw-send {{
+                                        font-size: 16px !important;
+                                    }}
+                                    
+                                    /* 小标题强调 */
+                                    strong, b {{
+                                        font-weight: 700 !important;
+                                    }}
+                                    
+                                    /* 提示文字 */
+                                    .rcw-timestamp,
+                                    div[class*="timestamp"] {{
+                                        font-size: 14px !important;
+                                        color: #999 !important;
+                                    }}
+                                    
+                                    /* AI点评区域特殊处理 */
+                                    div[class*="ai-feedback"],
+                                    div[class*="evaluation"] {{
+                                        font-size: 16px !important;
+                                        background-color: #f5f5f5 !important;
+                                        padding: 15px !important;
+                                        border-radius: 8px !important;
+                                    }}
+                                `,
+                                // 桌面端字体更大
+                                ...(window.innerWidth > 768 ? {{
+                                    customCss: `
+                                        .markdown-body,
+                                        .message-content {{
+                                            font-size: 18px !important;
+                                            line-height: 1.7 !important;
+                                        }}
+                                        
+                                        h1, h2, h3, h4 {{
+                                            font-size: 22px !important;
+                                        }}
+                                        
+                                        input, textarea {{
+                                            font-size: 18px !important;
+                                        }}
+                                    `
+                                }} : {{}})
                             }},
                             el: document.getElementById('coze-container'),
                             auth: {{
@@ -134,9 +219,9 @@ with tab2:
                         console.error('Coze初始化失败:', error);
                         document.getElementById('coze-container').innerHTML = 
                             `<div style="padding:20px;color:red;">
-                                <h3>加载失败</h3>
-                                <p>${{error.message}}</p>
-                                <button onclick="location.reload()">刷新重试</button>
+                                <h3 style="font-size:20px;">加载失败</h3>
+                                <p style="font-size:16px;">${{error.message}}</p>
+                                <button onclick="location.reload()" style="font-size:16px;padding:10px 20px;">刷新重试</button>
                             </div>`;
                     }}
                 }}
@@ -148,12 +233,5 @@ with tab2:
     </html>
     """
     
-    # 显示聊天界面
-    components.html(chat_html, height=700)
-    
-    # 添加备用方案
-    with st.expander("📱 如果无法加载，请使用手机扫码"):
-        bot_url = f"https://www.coze.cn/store/bot/{BOT_ID}"
-        qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={bot_url}"
-        st.image(qr_url, width=200)
-        st.markdown(f"或点击链接：[{bot_url}]({bot_url})")
+    # 显示聊天界面 - 调高了高度
+    components.html(chat_html, height=750)
