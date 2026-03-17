@@ -108,15 +108,25 @@ with tab1:
         except Exception as e:
             st.error(f"连接扣子失败: {str(e)}")
 
-# ================= 4. 学生端：免登录答题逻辑 =================
+# ================= 4. 学生端：优化后的布局 =================
 with tab2:
     st.header("📝 病理生理学练习批改")
-    st.write("请在右侧/下方的对话窗口中输入你的答案。AI 将实时为你提供反馈。")
+    st.write("请在下方窗口中输入答案（若显示不全，请尝试上下滑动窗口内部）。")
     
-    # 动态生成的 Chat SDK 代码 (适配 1.2.0-beta.19)
-    # 使用老师的 Token 实现学生免登录进入
+    # 修改点：将 width 设为 100%，height 设为更适合手机的 80vh（视口高度）
+    # 增加了一个容器样式确保在手机上能撑开
     chat_sdk_html = f"""
-    <div id="coze-chat-window" style="width: 100%; height: 700px; border: 1px solid #f0f2f6; border-radius: 10px;"></div>
+    <style>
+        /* 强制让对话框撑满手机屏幕，不留白边 */
+        #coze-chat-window {{
+            width: 100%;
+            height: 75vh !important; 
+            border: 1px solid #f0f2f6;
+            border-radius: 12px;
+            overflow: hidden;
+        }}
+    </style>
+    <div id="coze-chat-window"></div>
     <script src="https://lf-cdn.coze.cn/obj/unpkg/flow-platform/chat-app-sdk/1.2.0-beta.19/libs/cn/index.js"></script>
     <script>
       const client = new CozeWebSDK.WebChatClient({{
@@ -124,9 +134,8 @@ with tab2:
           bot_id: '{BOT_ID}',
         }},
         componentProps: {{
-          title: '病理生理学批改助手',
-          icon: 'https://lf3-static.bytednsdoc.com/obj/eden-cn/ylpvyhl_js_lp/ljhwZthlaukjlkulzlp/logo.png',
-          layout: 'inline',
+          title: '医学批改助手',
+          layout: 'inline', // 保持内嵌模式
         }},
         el: document.getElementById('coze-chat-window'),
         auth: {{
@@ -139,6 +148,9 @@ with tab2:
       }});
     </script>
     """
+    
+    # 修改点：将 components.html 的 height 设得比内部 div 高一点，防止出现两个滚动条
+    components.html(chat_sdk_html, height=800)
     
     # 将 HTML 注入页面
     components.html(chat_sdk_html, height=720)
