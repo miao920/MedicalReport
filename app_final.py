@@ -126,20 +126,20 @@ with tab2:
                                     .chat-bubble,
                                     .rcw-message,
                                     div[class*="message"] {{
-                                        font-size: 20px !important;
+                                        font-size: 22px !important;
                                         line-height: 1.6 !important;
                                     }}
                                     
                                     /* 用户消息字体 */
                                     div[class*="message-user"],
                                     div[class*="client"] .markdown-body {{
-                                        font-size: 20px !important;
+                                        font-size: 22px !important;
                                     }}
                                     
                                     /* AI回复字体 */
                                     div[class*="message-bot"],
                                     div[class*="assistant"] .markdown-body {{
-                                        font-size: 20px !important;
+                                        font-size: 22px !important;
                                     }}
                                     
                                     /* 标题字体 */
@@ -153,7 +153,7 @@ with tab2:
                                     div[class*="input"],
                                     div[class*="Input"],
                                     .rcw-new-message {{
-                                        font-size: 20px !important;
+                                        font-size: 22px !important;
                                         padding: 12px !important;
                                     }}
                                     
@@ -174,7 +174,7 @@ with tab2:
                                     /* AI点评区域特殊处理 */
                                     div[class*="ai-feedback"],
                                     div[class*="evaluation"] {{
-                                        font-size: 18px !important;
+                                        font-size: 22px !important;
                                         background-color: #f5f5f5 !important;
                                         padding: 15px !important;
                                         border-radius: 8px !important;
