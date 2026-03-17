@@ -126,25 +126,25 @@ with tab2:
                                     .chat-bubble,
                                     .rcw-message,
                                     div[class*="message"] {{
-                                        font-size: 16px !important;
+                                        font-size: 18px !important;
                                         line-height: 1.6 !important;
                                     }}
                                     
                                     /* 用户消息字体 */
                                     div[class*="message-user"],
                                     div[class*="client"] .markdown-body {{
-                                        font-size: 16px !important;
+                                        font-size: 18px !important;
                                     }}
                                     
                                     /* AI回复字体 */
                                     div[class*="message-bot"],
                                     div[class*="assistant"] .markdown-body {{
-                                        font-size: 16px !important;
+                                        font-size: 18px !important;
                                     }}
                                     
                                     /* 标题字体 */
                                     h1, h2, h3, h4 {{
-                                        font-size: 20px !important;
+                                        font-size: 22px !important;
                                         font-weight: 600 !important;
                                     }}
                                     
@@ -153,7 +153,7 @@ with tab2:
                                     div[class*="input"],
                                     div[class*="Input"],
                                     .rcw-new-message {{
-                                        font-size: 16px !important;
+                                        font-size: 18px !important;
                                         padding: 12px !important;
                                     }}
                                     
@@ -161,12 +161,7 @@ with tab2:
                                     button,
                                     div[class*="send"],
                                     .rcw-send {{
-                                        font-size: 16px !important;
-                                    }}
-                                    
-                                    /* 小标题强调 */
-                                    strong, b {{
-                                        font-weight: 700 !important;
+                                        font-size: 18px !important;
                                     }}
                                     
                                     /* 提示文字 */
@@ -179,7 +174,7 @@ with tab2:
                                     /* AI点评区域特殊处理 */
                                     div[class*="ai-feedback"],
                                     div[class*="evaluation"] {{
-                                        font-size: 16px !important;
+                                        font-size: 18px !important;
                                         background-color: #f5f5f5 !important;
                                         padding: 15px !important;
                                         border-radius: 8px !important;
@@ -190,16 +185,16 @@ with tab2:
                                     customCss: `
                                         .markdown-body,
                                         .message-content {{
-                                            font-size: 18px !important;
+                                            font-size: 20px !important;
                                             line-height: 1.7 !important;
                                         }}
                                         
                                         h1, h2, h3, h4 {{
-                                            font-size: 22px !important;
+                                            font-size: 24px !important;
                                         }}
                                         
                                         input, textarea {{
-                                            font-size: 18px !important;
+                                            font-size: 20px !important;
                                         }}
                                     `
                                 }} : {{}})
