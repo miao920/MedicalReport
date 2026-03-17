@@ -60,17 +60,52 @@ with tab1:
             with st.spinner("正在连接扣子提取数据..."):
                 # 运行统计工作流
                 res = requests.post(API_URL, headers=headers, json={"workflow_id": WORKFLOW_ID})
-                res_json = res.json()
                 
-                # 解析数据字段
+                # ========== 调试信息开始 ==========
+                st.write("### 🔍 调试信息")
+                st.write(f"**状态码:** {res.status_code}")
+                
+                # 显示原始返回
+                st.write("**原始返回:**")
+                st.code(res.text, language="json")
+                
+                # 解析JSON
+                res_json = res.json()
+                st.write("**解析后的JSON:**")
+                st.json(res_json)
+                
+                # 获取data字段
                 raw_data = res_json.get("data", "{}")
-                # 兼容处理：如果 data 是字符串则解析为对象
-                data_obj = json.loads(raw_data) if isinstance(raw_data, str) else raw_data
-                report = data_obj.get("report_data", [])
+                st.write(f"**raw_data 类型:** {type(raw_data)}")
+                st.write(f"**raw_data 内容:** {raw_data}")
+                
+                # 解析data字段
+                if isinstance(raw_data, str):
+                    try:
+                        data_obj = json.loads(raw_data)
+                        st.write("**data_obj (解析后):**")
+                        st.json(data_obj)
+                    except:
+                        data_obj = {}
+                        st.write("**data_obj 解析失败**")
+                else:
+                    data_obj = raw_data
+                    st.write("**data_obj (直接使用):**")
+                    st.json(data_obj)
+                
+                # 获取report_data
+                report = data_obj.get("report_data", []) if data_obj else []
+                st.write(f"**report_data:** {report}")
+                st.write(f"**report_data 长度:** {len(report)}")
+                # ========== 调试信息结束 ==========
                 
                 if report and len(report) > 0:
                     # 数据清洗：处理空字符串并转为整数
                     s = {k: (int(v) if (v and str(v).isdigit()) else 0) for k, v in report[0].items()}
+                    
+                    # 显示清洗后的数据
+                    st.write("**清洗后的数据:**")
+                    st.json(s)
                     
                     # --- A. 核心指标行 ---
                     m1, m2, m3, m4 = st.columns(4)
@@ -86,7 +121,7 @@ with tab1:
                     
                     # 识别最薄弱环节
                     miss_dict = {"ADH": s.get('miss_adh',0), "ANP": s.get('miss_anp',0), "RAAS": s.get('miss_raas',0)}
-                    weak_point = max(miss_dict, key=miss_dict.get) if total > 0 else "暂无"
+                    weak_point = max(miss_dict, key=miss_dict.get) if total > 0 and max(miss_dict.values()) > 0 else "暂无"
                     m4.metric("最薄弱机制", weak_point)
 
                     st.markdown("---")
@@ -107,16 +142,18 @@ with tab1:
                     with col_r:
                         # 柱状图：知识点缺失统计
                         df_bar = pd.DataFrame({
-                            "生理机制": ["ADH缺失", "ANP缺失", "RAAS缺失"], 
+                            "病生机制": ["ADH缺失", "ANP缺失", "RAAS缺失"], 
                             "未掌握人数": [s.get('miss_adh',0), s.get('miss_anp',0), s.get('miss_raas',0)]
                         })
-                        fig_bar = px.bar(df_bar, x='生理机制', y='未掌握人数', title="知识点薄弱项排查",
+                        fig_bar = px.bar(df_bar, x='病生机制', y='未掌握人数', title="知识点薄弱项排查",
                                        color='未掌握人数', color_continuous_scale='Reds')
                         st.plotly_chart(fig_bar, use_container_width=True)
                 else:
                     st.warning("📊 暂未发现有效数据。请确保：1. 数据库不为空；2. 统计工作流已发布且勾选API。")
         except Exception as e:
             st.error(f"连接扣子失败: {str(e)}")
+            st.write("### 错误详情")
+            st.exception(e)  # 显示完整错误堆栈
 
 # ================= 4. 学生端：字体放大版 =================
 with tab2:
