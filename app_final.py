@@ -59,6 +59,13 @@ with tab1:
         try:
             with st.spinner("正在同步数据库最新记录..."):
                 res = requests.post(API_URL, headers=headers, json={"workflow_id": WORKFLOW_ID})
+
+               # ========== 新增调试代码开始 ==========
+                st.write("### 🔍 调试信息")
+                st.write(f"**状态码:** {res.status_code}")
+                st.write("**原始返回:**")
+                st.code(res.text, language="json")
+                # ========== 新增调试代码结束 ==========
                 res_json = res.json()
                 
                 # 1. 深度解析：处理可能存在的字符串嵌套
