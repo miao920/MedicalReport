@@ -6,15 +6,9 @@ import json
 
 st.set_page_config(page_title="课堂实时学情看板", layout="wide")
 
-# =============================
-# 飞书开放平台应用凭证
-# =============================
-FEISHU_APP_ID = "cli_a9302c7babf89cd4".strip()
-FEISHU_APP_SECRET = "15hzGFmO4NIai0j9dKIAodLhXzaoWLZm".strip()
+FEISHU_APP_ID = "这里填你的飞书 App ID".strip()
+FEISHU_APP_SECRET = "这里填你的飞书 App Secret".strip()
 
-# =============================
-# 多维表格信息
-# =============================
 APP_TOKEN = "J9qZba697aEirjsYiAQcodeUnue"
 TABLE_ID = "tblryfcocA6mYGuL"
 
@@ -29,10 +23,9 @@ def get_tenant_access_token():
     }
 
     resp = requests.post(url, json=payload, timeout=20)
-    resp.raise_for_status()
     data = resp.json()
 
-    if data.get("code") != 0:
+    if resp.status_code != 200 or data.get("code") != 0:
         raise Exception(f"获取 tenant_access_token 失败：{data}")
 
     token = data.get("tenant_access_token")
@@ -51,7 +44,7 @@ def search_all_records(access_token):
 
     all_items = []
     page_token = None
-    last_raw = None
+    last_resp = None
 
     while True:
         payload = {"page_size": 500}
@@ -59,12 +52,22 @@ def search_all_records(access_token):
             payload["page_token"] = page_token
 
         resp = requests.post(url, headers=headers, json=payload, timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
-        last_raw = data
+
+        try:
+            data = resp.json()
+        except Exception:
+            data = {"raw_text": resp.text}
+
+        last_resp = {
+            "status_code": resp.status_code,
+            "response": data
+        }
+
+        if resp.status_code != 200:
+            raise Exception(f"查询记录 HTTP 失败：{last_resp}")
 
         if data.get("code") != 0:
-            raise Exception(f"查询记录失败：{data}")
+            raise Exception(f"查询记录接口失败：{last_resp}")
 
         items = data.get("data", {}).get("items", [])
         all_items.extend(items)
@@ -75,7 +78,7 @@ def search_all_records(access_token):
         if not has_more:
             break
 
-    return all_items, last_raw
+    return all_items, last_resp
 
 
 def normalize_cell_value(v):
@@ -112,21 +115,14 @@ def parse_records_to_df(records):
         fields = item.get("fields", {})
         row = {k: normalize_cell_value(v) for k, v in fields.items()}
         rows.append(row)
-
     return pd.DataFrame(rows) if rows else pd.DataFrame()
 
 
 def calc_report(df: pd.DataFrame):
     if df.empty:
         return {
-            "total": 0,
-            "l0": 0,
-            "l1": 0,
-            "l2": 0,
-            "l3": 0,
-            "adh": 0,
-            "anp": 0,
-            "raas": 0
+            "total": 0, "l0": 0, "l1": 0, "l2": 0, "l3": 0,
+            "adh": 0, "anp": 0, "raas": 0
         }
 
     score_series = df["score_level"].fillna("").astype(str) if "score_level" in df.columns else pd.Series(dtype=str)
@@ -147,19 +143,18 @@ def calc_report(df: pd.DataFrame):
 if st.button("🔄 刷新统计看板", type="primary"):
     try:
         with st.spinner("正在从飞书读取真实数据..."):
-            access_token, token_data = get_tenant_access_token()
-            records, records_raw = search_all_records(access_token)
+            access_token, token_raw = get_tenant_access_token()
+            records, query_raw = search_all_records(access_token)
             df = parse_records_to_df(records)
             s = calc_report(df)
 
-        with st.expander("调试：token 接口返回"):
-            st.json(token_data)
+        with st.expander("调试：token 返回"):
+            st.json(token_raw)
 
-        with st.expander("调试：查询记录接口返回"):
-            st.json(records_raw)
+        with st.expander("调试：查询记录返回"):
+            st.json(query_raw)
 
         st.success("已读取飞书真实数据。")
-        st.write("**当前统计结果：**")
         st.json(s)
 
         total = s["total"]
@@ -184,7 +179,6 @@ if st.button("🔄 刷新统计看板", type="primary"):
         st.markdown("---")
 
         chart1, chart2 = st.columns(2)
-
         with chart1:
             fig_pie = px.pie(
                 names=["L0(不及格)", "L1(及格)", "L2(良好)", "L3(优秀)"],
