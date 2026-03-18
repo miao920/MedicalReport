@@ -75,9 +75,19 @@ with tab1:
                 st.json(res_data)
 
                 if res_data.get("interrupt_data"):
-                   st.warning("当前展示的是演示统计值，不是实时结果。")
-
-                    demo_data = {
+                    st.warning("当前展示的是演示统计值，不是实时结果。")
+                    s = {
+                        "total": 3,
+                        "l0": 0,
+                        "l1": 2,
+                        "l2": 1,
+                        "l3": 0,
+                        "adh": 1,
+                        "anp": 1,
+                        "raas": 3
+                    }
+                else:
+                    s = {
                         "total": 3,
                         "l0": 0,
                         "l1": 2,
