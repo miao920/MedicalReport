@@ -6,9 +6,15 @@ import json
 
 st.set_page_config(page_title="课堂实时学情看板", layout="wide")
 
-FEISHU_APP_ID = "这里填你的飞书 App ID".strip()
-FEISHU_APP_SECRET = "这里填你的飞书 App Secret".strip()
+# =============================
+# 飞书开放平台自建应用凭证
+# =============================
+FEISHU_APP_ID = "cli_a9302c7babf89cd4".strip()
+FEISHU_APP_SECRET = "15hzGFmO4NIai0j9dKIAodLhXzaoWLZm".strip()
 
+# =============================
+# 多维表格信息
+# =============================
 APP_TOKEN = "J9qZba697aEirjsYiAQcodeUnue"
 TABLE_ID = "tblryfcocA6mYGuL"
 
@@ -32,7 +38,7 @@ def get_tenant_access_token():
     if not token:
         raise Exception(f"tenant_access_token 为空：{data}")
 
-    return token, data
+    return token
 
 
 def search_all_records(access_token):
@@ -44,7 +50,6 @@ def search_all_records(access_token):
 
     all_items = []
     page_token = None
-    last_resp = None
 
     while True:
         payload = {"page_size": 500}
@@ -58,16 +63,11 @@ def search_all_records(access_token):
         except Exception:
             data = {"raw_text": resp.text}
 
-        last_resp = {
-            "status_code": resp.status_code,
-            "response": data
-        }
-
         if resp.status_code != 200:
-            raise Exception(f"查询记录 HTTP 失败：{last_resp}")
+            raise Exception(f"查询记录 HTTP 失败：{data}")
 
         if data.get("code") != 0:
-            raise Exception(f"查询记录接口失败：{last_resp}")
+            raise Exception(f"查询记录接口失败：{data}")
 
         items = data.get("data", {}).get("items", [])
         all_items.extend(items)
@@ -78,7 +78,7 @@ def search_all_records(access_token):
         if not has_more:
             break
 
-    return all_items, last_resp
+    return all_items
 
 
 def normalize_cell_value(v):
@@ -121,40 +121,51 @@ def parse_records_to_df(records):
 def calc_report(df: pd.DataFrame):
     if df.empty:
         return {
-            "total": 0, "l0": 0, "l1": 0, "l2": 0, "l3": 0,
-            "adh": 0, "anp": 0, "raas": 0
+            "total": 0,
+            "l0": 0,
+            "l1": 0,
+            "l2": 0,
+            "l3": 0,
+            "adh": 0,
+            "anp": 0,
+            "raas": 0
         }
 
-    score_series = df["score_level"].fillna("").astype(str) if "score_level" in df.columns else pd.Series(dtype=str)
-    missing_series = df["missing_points"].fillna("").astype(str) if "missing_points" in df.columns else pd.Series(dtype=str)
+    score_series = (
+        df["score_level"].fillna("").astype(str)
+        if "score_level" in df.columns
+        else pd.Series(dtype=str)
+    )
+
+    missing_series = (
+        df["missing_points"].fillna("").astype(str)
+        if "missing_points" in df.columns
+        else pd.Series(dtype=str)
+    )
 
     return {
-        "total": int(len(df)),
+        "total": int(len(df[df.notna().any(axis=1)])),
         "l0": int((score_series == "Level0").sum()),
         "l1": int((score_series == "Level1").sum()),
         "l2": int((score_series == "Level2").sum()),
         "l3": int((score_series == "Level3").sum()),
-        "adh": int(missing_series.str.contains("ADH|adh", regex=True).sum()),
-        "anp": int(missing_series.str.contains("ANP|anp", regex=True).sum()),
-        "raas": int(missing_series.str.contains("RAAS|raas", regex=True).sum())
+        "adh": int(missing_series.str.contains("ADH|抗利尿激素", regex=True).sum()),
+        "anp": int(missing_series.str.contains("ANP|心房利钠肽", regex=True).sum()),
+        "raas": int(missing_series.str.contains("RAAS|醛固酮|肾素|血管紧张素", regex=True).sum())
     }
 
 
 if st.button("🔄 刷新统计看板", type="primary"):
     try:
         with st.spinner("正在从飞书读取真实数据..."):
-            access_token, token_raw = get_tenant_access_token()
-            records, query_raw = search_all_records(access_token)
+            access_token = get_tenant_access_token()
+            records = search_all_records(access_token)
             df = parse_records_to_df(records)
-            s = calc_report(df)
-
-        with st.expander("调试：token 返回"):
-            st.json(token_raw)
-
-        with st.expander("调试：查询记录返回"):
-            st.json(query_raw)
+            df_valid = df[df.notna().any(axis=1)].copy() if not df.empty else df
+            s = calc_report(df_valid)
 
         st.success("已读取飞书真实数据。")
+        st.write("**当前统计结果：**")
         st.json(s)
 
         total = s["total"]
@@ -179,6 +190,7 @@ if st.button("🔄 刷新统计看板", type="primary"):
         st.markdown("---")
 
         chart1, chart2 = st.columns(2)
+
         with chart1:
             fig_pie = px.pie(
                 names=["L0(不及格)", "L1(及格)", "L2(良好)", "L3(优秀)"],
@@ -198,7 +210,7 @@ if st.button("🔄 刷新统计看板", type="primary"):
             st.plotly_chart(fig_bar, use_container_width=True)
 
         with st.expander("📋 查看原始表格数据"):
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df_valid, use_container_width=True)
 
     except Exception as e:
         st.error(f"❌ 读取飞书失败：{str(e)}")
