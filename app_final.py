@@ -176,14 +176,19 @@ with tab1:
                     except Exception:
                         return default
 
-                # 4. 解析 data 字段
+                # 4. 直接解析统计结果
                 raw_content = res_data.get("data", {})
                 st.write("**data字段原始内容:**", raw_content)
 
-                data_obj = normalize_obj(raw_content)
+                level1 = json.loads(raw_content) if isinstance(raw_content, str) else raw_content
+                level2 = json.loads(level1.get("data", "{}")) if isinstance(level1.get("data"), str) else level1.get("data", {})
+                s = level2.get("report_data", {})
 
                 st.write("**data字段解析后内容:**")
-                st.json(data_obj)
+                st.json(level2)
+
+                st.write("**提取到的统计结果对象:**")
+                st.json(s)
 
                 # 5. 提取统计结果
                 s = pick_stats(data_obj)
