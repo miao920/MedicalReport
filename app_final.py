@@ -371,7 +371,7 @@ if st.button("🔄 刷新统计看板", type="primary"):
         st.markdown("---")
 
         # 模块2
-        st.markdown('<div class="module-title">作答等级分布</div>', unsafe_allow_html=True)
+        st.markdown('<div class="module-title">🏆作答等级分布</div>', unsafe_allow_html=True)
         level_df = pd.DataFrame({
             "等级水平": ["Level0", "Level1", "Level2", "Level3"],
             "占比人数": [l0, l1, l2, l3]
@@ -380,7 +380,6 @@ if st.button("🔄 刷新统计看板", type="primary"):
             level_df,
             names="等级水平",
             values="占比人数",
-            title="🏆 作答等级分布",
             hole=0.42
         )
         fig_pie.update_traces(
@@ -405,7 +404,7 @@ if st.button("🔄 刷新统计看板", type="primary"):
         st.markdown("---")
 
         # 模块3
-        st.markdown('<div class="module-title">知识点命中率</div>', unsafe_allow_html=True)
+        st.markdown('<div class="module-title">🎯知识点命中率</div>', unsafe_allow_html=True)
         hit_rate_df = pd.DataFrame({
             "知识点": [
                 "肾小球滤过膜通透性增高",
@@ -429,8 +428,7 @@ if st.button("🔄 刷新统计看板", type="primary"):
             y="知识点",
             orientation="h",
             text="命中率",
-            title="🎯 知识点命中率"
-        )
+            )
         fig_hit.update_traces(
             texttemplate="%{x}%",
             textposition="outside",
@@ -457,7 +455,7 @@ if st.button("🔄 刷新统计看板", type="primary"):
         st.markdown("---")
 
         # 模块4
-        st.markdown('<div class="module-title">常见失分点 Top3</div>', unsafe_allow_html=True)
+        st.markdown('<div class="module-title">📌 常见失分点 Top3</div>', unsafe_allow_html=True)
         if top_missing_points:
             top_df = pd.DataFrame(top_missing_points)
             top_df.columns = ["常见失分点", "出现次数"]
@@ -469,8 +467,7 @@ if st.button("🔄 刷新统计看板", type="primary"):
                 y="常见失分点",
                 orientation="h",
                 text="出现次数",
-                title="📌 常见失分点 Top3"
-            )
+                )
             fig_top.update_traces(
                 textposition="outside",
                 textfont_size=24
