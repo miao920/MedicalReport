@@ -5,12 +5,13 @@ import plotly.express as px
 import json
 
 st.set_page_config(page_title="课堂实时学情看板", layout="wide")
+tab1, tab2 = st.tabs(["教师看板", "学生端"])
 
 # =============================
 # 飞书开放平台应用凭证
 # =============================
-FEISHU_APP_ID = "cli_a9302c7babf89cd4"
-FEISHU_APP_SECRET = "15hzGFmO4NIai0j9dKIAodLhXzaoWLZm"
+FEISHU_APP_ID = "这里填你的 app_id"
+FEISHU_APP_SECRET = "这里填你的 app_secret"
 
 # =============================
 # 多维表格信息
@@ -27,6 +28,7 @@ def get_tenant_access_token():
         "app_id": FEISHU_APP_ID,
         "app_secret": FEISHU_APP_SECRET
     }
+
     resp = requests.post(url, json=payload, timeout=20)
     resp.raise_for_status()
     data = resp.json()
@@ -34,21 +36,27 @@ def get_tenant_access_token():
     if data.get("code") != 0:
         raise Exception(f"获取 tenant_access_token 失败: {data}")
 
-    return data["tenant_access_token"]
+    token = data.get("tenant_access_token")
+    if not token:
+        raise Exception(f"tenant_access_token 为空: {data}")
+
+    return token
 
 
-def search_all_records(tenant_access_token):
+def search_all_records(access_token):
     url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{APP_TOKEN}/tables/{TABLE_ID}/records/search"
     headers = {
-        "Authorization": f"Bearer {tenant_access_token}",
-        "Content-Type": "application/json"
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json; charset=utf-8"
     }
 
     all_items = []
     page_token = None
 
     while True:
-        payload = {"page_size": 500}
+        payload = {
+            "page_size": 500
+        }
         if page_token:
             payload["page_token"] = page_token
 
@@ -74,6 +82,7 @@ def search_all_records(tenant_access_token):
 def normalize_cell_value(v):
     if v is None:
         return ""
+
     if isinstance(v, list):
         vals = []
         for item in v:
@@ -87,12 +96,14 @@ def normalize_cell_value(v):
             else:
                 vals.append(str(item))
         return ",".join(vals)
+
     if isinstance(v, dict):
         if "text" in v:
             return str(v["text"])
         if "name" in v:
             return str(v["name"])
         return json.dumps(v, ensure_ascii=False)
+
     return str(v)
 
 
@@ -102,6 +113,10 @@ def parse_records_to_df(records):
         fields = item.get("fields", {})
         row = {k: normalize_cell_value(v) for k, v in fields.items()}
         rows.append(row)
+
+    if not rows:
+        return pd.DataFrame()
+
     return pd.DataFrame(rows)
 
 
@@ -154,8 +169,8 @@ def calc_report(df: pd.DataFrame):
 if st.button("🔄 刷新统计看板", type="primary"):
     try:
         with st.spinner("正在从飞书读取真实数据..."):
-            token = get_tenant_access_token()
-            records = search_all_records(token)
+            access_token = get_tenant_access_token()
+            records = search_all_records(access_token)
             df = parse_records_to_df(records)
             s = calc_report(df)
 
