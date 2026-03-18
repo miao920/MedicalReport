@@ -262,19 +262,19 @@ html, body, [class*="css"], .stApp {
 }
 
 .block-container {
-    padding-top: 12rem;
+    padding-top: 6rem;
     padding-bottom: 2rem;
     max-width: 96rem;
 }
 
 .top-header {
     text-align: center;
-    margin-top: 18rem;
+    margin-top: 8rem;
     margin-bottom: 0.6rem;
 }
 
 .top-title {
-    font-size: 34px;
+    font-size: 64px;
     line-height: 1.7;
     font-weight: 800;
     color: #0f172a;
