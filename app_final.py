@@ -75,8 +75,7 @@ with tab1:
                 st.json(res_data)
 
                 if res_data.get("interrupt_data"):
-                    st.error("统计工作流通过 API 调用时触发了飞书鉴权，暂时无法直接取回 report_data。")
-                    st.info("先按固定统计结果展示，确认前端看板正常。")
+                   st.warning("当前展示的是演示统计值，不是实时结果。")
 
                     demo_data = {
                         "total": 3,
