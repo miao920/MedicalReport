@@ -43,10 +43,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+st.write("当前 WORKFLOW_ID:", WORKFLOW_ID)
+
 # 创建三个标签页
 tab1, tab_diag, tab2 = st.tabs(["🏥 班级实时学情分析", "🔬 数据连接诊断", "📝 学生答题"])
 
-# ================= 教师端：学情看板（完整修正版） =================
 # ================= 教师端：学情看板（稳健兼容版） =================
 with tab1:
     st.title("🏥 班级实时学情分析")
