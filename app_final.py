@@ -8,14 +8,14 @@ st.set_page_config(page_title="课堂实时学情看板", layout="wide")
 
 # =============================
 # 飞书开放平台应用凭证
-# 这里一定要填“飞书开放平台自建应用”的真实值
-# 不是 app_token，不是 table_id
 # =============================
 FEISHU_APP_ID = "cli_a9302c7babf89cd4".strip()
 FEISHU_APP_SECRET = "15hzGFmO4NIai0j9dKIAodLhXzaoWLZm".strip()
 
 # =============================
 # 多维表格信息
+# app_token = Base ID
+# table_id = 数据表 ID
 # =============================
 APP_TOKEN = "J9qZba697aEirjsYiAQcodeUnue"
 TABLE_ID = "tblryfcocA6mYGuL"
@@ -34,22 +34,31 @@ def get_tenant_access_token():
     resp.raise_for_status()
     data = resp.json()
 
-    # 调试信息：先确认 token 接口本身是否通了
-    st.write("### token接口返回")
-    st.json(data)
-
     if data.get("code") != 0:
-        raise Exception(
-            "获取 tenant_access_token 失败。"
-            "请检查 app_id / app_secret 是否填写为飞书开放平台自建应用的真实值，"
-            f"当前返回：{data}"
-        )
+        raise Exception(f"获取 tenant_access_token 失败：{data}")
 
     token = data.get("tenant_access_token")
     if not token:
         raise Exception(f"tenant_access_token 为空：{data}")
 
-    return token
+    return token, data
+
+
+def list_tables(access_token):
+    url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{APP_TOKEN}/tables"
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+
+    resp = requests.get(url, headers=headers, timeout=20)
+    resp.raise_for_status()
+    data = resp.json()
+
+    if data.get("code") != 0:
+        raise Exception(f"列出数据表失败：{data}")
+
+    items = data.get("data", {}).get("items", [])
+    return items, data
 
 
 def search_all_records(access_token):
@@ -61,18 +70,22 @@ def search_all_records(access_token):
 
     all_items = []
     page_token = None
+    debug_last_response = None
 
     while True:
-        payload = {"page_size": 500}
+        payload = {
+            "page_size": 500
+        }
         if page_token:
             payload["page_token"] = page_token
 
         resp = requests.post(url, headers=headers, json=payload, timeout=30)
         resp.raise_for_status()
         data = resp.json()
+        debug_last_response = data
 
         if data.get("code") != 0:
-            raise Exception(f"读取多维表格失败：{data}")
+            raise Exception(f"查询记录失败：{data}")
 
         items = data.get("data", {}).get("items", [])
         all_items.extend(items)
@@ -83,7 +96,7 @@ def search_all_records(access_token):
         if not has_more:
             break
 
-    return all_items
+    return all_items, debug_last_response
 
 
 def normalize_cell_value(v):
@@ -176,10 +189,29 @@ def calc_report(df: pd.DataFrame):
 if st.button("🔄 刷新统计看板", type="primary"):
     try:
         with st.spinner("正在从飞书读取真实数据..."):
-            access_token = get_tenant_access_token()
-            records = search_all_records(access_token)
+            access_token, token_data = get_tenant_access_token()
+            tables, tables_raw = list_tables(access_token)
+            records, records_raw = search_all_records(access_token)
+
             df = parse_records_to_df(records)
             s = calc_report(df)
+
+        st.success("已读取飞书真实数据。")
+
+        with st.expander("调试：token 接口返回"):
+            st.json(token_data)
+
+        with st.expander("调试：当前 Base 下的数据表"):
+            st.json(tables_raw)
+            if tables:
+                st.write("检测到的数据表：")
+                st.dataframe(pd.DataFrame(tables), use_container_width=True)
+
+        with st.expander("调试：查询记录接口最后一次返回"):
+            st.json(records_raw)
+
+        st.write("**当前统计结果：**")
+        st.json(s)
 
         total = s["total"]
         l0 = s["l0"]
@@ -189,10 +221,6 @@ if st.button("🔄 刷新统计看板", type="primary"):
         adh = s["adh"]
         anp = s["anp"]
         raas = s["raas"]
-
-        st.success("已读取飞书真实数据。")
-        st.write("**当前统计结果：**")
-        st.json(s)
 
         col1, col2, col3 = st.columns(3)
         with col1:
