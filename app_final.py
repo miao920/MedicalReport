@@ -262,14 +262,14 @@ html, body, [class*="css"], .stApp {
 }
 
 .block-container {
-    padding-top: 6rem;
+    padding-top: 1.8rem;
     padding-bottom: 2rem;
     max-width: 96rem;
 }
 
 .top-header {
     text-align: center;
-    margin-top: 8rem;
+    margin-top: 3rem;
     margin-bottom: 0.6rem;
 }
 
