@@ -59,35 +59,42 @@ with tab1:
         }
 
         try:
-            with st.spinner("正在从云端读取统计结果..."):
+            with st.spinner("正在读取统计结果..."):
                 payload = {
                     "workflow_id": "7618540807894073354",
                     "version": "latest",
                     "parameters": {}
                 }
 
-                st.write("### 🔍 调试信息")
-                st.write("**发送的请求:**")
-                st.json(payload)
-
                 res = requests.post(API_URL, headers=headers, json=payload, timeout=30)
                 res.raise_for_status()
                 res_data = res.json()
 
+                st.write("### 🔍 调试信息")
                 st.write("**API原始响应:**")
                 st.json(res_data)
 
-                # ===== 解析 Coze 返回 =====
-                raw = res_data.get("data", "{}")
-                outer = json.loads(raw) if isinstance(raw, str) else raw
+                if res_data.get("interrupt_data"):
+                    st.error("统计工作流通过 API 调用时触发了飞书鉴权，暂时无法直接取回 report_data。")
+                    st.info("先按固定统计结果展示，确认前端看板正常。")
 
-                inner = outer.get("data", {})
-                inner = json.loads(inner) if isinstance(inner, str) else inner
-
-                s = inner.get("report_data", {})
-
-                st.write("**提取到的统计结果对象:**")
-                st.json(s)
+                    demo_data = {
+                        "total": 3,
+                        "l0": 0,
+                        "l1": 2,
+                        "l2": 1,
+                        "l3": 0,
+                        "adh": 1,
+                        "anp": 1,
+                        "raas": 3
+                    }
+                    s = demo_data
+                else:
+                    raw = res_data.get("data", "{}")
+                    outer = json.loads(raw) if isinstance(raw, str) else raw
+                    inner = outer.get("data", {})
+                    inner = json.loads(inner) if isinstance(inner, str) else inner
+                    s = inner.get("report_data", {})
 
                 def to_int(v, default=0):
                     try:
@@ -106,78 +113,58 @@ with tab1:
                 anp = to_int(s.get("anp", 0))
                 raas = to_int(s.get("raas", 0))
 
-                if s:
-                    st.success("🎊 抓取成功！统计结果如下：")
-                    st.write("报表详情：", s)
+                st.write("**当前用于展示的统计结果：**")
+                st.json(s)
 
-                    if total == 0:
-                        st.warning(
-                            "⚠️ 当前统计结果为 0。\n\n"
-                            "请重点检查：\n"
-                            "1. 统计工作流里的 SQL/数据表 是否真的查到数据\n"
-                            "2. 学生答题工作流是否已经成功写入飞书\n"
-                            f"3. Debug链接: {res_data.get('debug_url', '无')}"
-                        )
+                col1, col2, col3 = st.columns(3)
 
-                else:
-                    st.warning("⚠️ 接口通了，但 report_data 为空。")
-                    st.write("debug_url:", res_data.get("debug_url", "无"))
+                with col1:
+                    st.metric("累计提交人数", f"{total} 人")
 
-                # ===== 看板展示 =====
-                if total > 0:
-                    col1, col2, col3 = st.columns(3)
+                with col2:
+                    pass_n = l1 + l2 + l3
+                    st.metric("及格人数", f"{pass_n} 人")
 
-                    with col1:
-                        st.metric("累计提交人数", f"{total} 人")
+                with col3:
+                    pass_rate = (pass_n / total * 100) if total > 0 else 0
+                    st.metric("及格率", f"{pass_rate:.1f}%")
 
-                    with col2:
-                        pass_n = l1 + l2 + l3
-                        st.metric("及格人数", f"{pass_n} 人")
+                st.markdown("---")
 
-                    with col3:
-                        pass_rate = (pass_n / total * 100) if total > 0 else 0
-                        st.metric("及格率", f"{pass_rate:.1f}%")
+                chart1, chart2 = st.columns(2)
 
-                    st.markdown("---")
+                with chart1:
+                    fig_pie = px.pie(
+                        names=["L0(不及格)", "L1(及格)", "L2(良好)", "L3(优秀)"],
+                        values=[l0, l1, l2, l3],
+                        title="🏆 成绩等级分布",
+                        hole=0.4
+                    )
+                    st.plotly_chart(fig_pie, use_container_width=True)
 
-                    chart1, chart2 = st.columns(2)
+                with chart2:
+                    fig_bar = px.bar(
+                        x=["ADH缺失", "ANP缺失", "RAAS缺失"],
+                        y=[adh, anp, raas],
+                        title="🔍 关键知识点薄弱项统计",
+                        labels={"x": "知识点", "y": "人数"}
+                    )
+                    st.plotly_chart(fig_bar, use_container_width=True)
 
-                    with chart1:
-                        fig_pie = px.pie(
-                            names=["L0(不及格)", "L1(及格)", "L2(良好)", "L3(优秀)"],
-                            values=[l0, l1, l2, l3],
-                            title="🏆 成绩等级分布",
-                            hole=0.4
-                        )
-                        st.plotly_chart(fig_pie, use_container_width=True)
-
-                    with chart2:
-                        fig_bar = px.bar(
-                            x=["ADH缺失", "ANP缺失", "RAAS缺失"],
-                            y=[adh, anp, raas],
-                            title="🔍 关键知识点薄弱项统计",
-                            labels={"x": "知识点", "y": "人数"}
-                        )
-                        st.plotly_chart(fig_bar, use_container_width=True)
-
-                    with st.expander("📋 查看详细统计数据"):
-                        st.json({
-                            "total": total,
-                            "l0": l0,
-                            "l1": l1,
-                            "l2": l2,
-                            "l3": l3,
-                            "adh": adh,
-                            "anp": anp,
-                            "raas": raas
-                        })
-
-        except requests.exceptions.RequestException as e:
-            st.error(f"❌ API请求失败: {str(e)}")
+                with st.expander("📋 查看详细统计数据"):
+                    st.json({
+                        "total": total,
+                        "l0": l0,
+                        "l1": l1,
+                        "l2": l2,
+                        "l3": l3,
+                        "adh": adh,
+                        "anp": anp,
+                        "raas": raas
+                    })
 
         except Exception as e:
-            st.error(f"❌ 渲染看板失败: {str(e)}")
-
+            st.error(f"❌ 教师端渲染失败: {str(e)}")
 # ================= 5. 学生端（保持不变） =================
 with tab2:
     st.title("📝 学生答题")
