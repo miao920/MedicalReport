@@ -7,7 +7,7 @@ import plotly.express as px  # 用于图表
 
 # ================= 1. 核心配置 =================
 PERSONAL_ACCESS_TOKEN = st.secrets["COZE_TOKEN"]
-WORKFLOW_ID = "7617931269947506729"
+WORKFLOW_ID = "7618540807894073354"
 BOT_ID = "7617094528700530742"
 API_URL = "https://api.coze.cn/v1/workflow/run"
 
