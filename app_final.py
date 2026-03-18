@@ -9,8 +9,8 @@ st.set_page_config(page_title="课堂实时学情看板", layout="wide")
 # =============================
 # 飞书开放平台自建应用凭证
 # =============================
-FEISHU_APP_ID = "cli_a9302c7babf89cd4".strip()
-FEISHU_APP_SECRET = "15hzGFmO4NIai0j9dKIAodLhXzaoWLZm".strip()
+FEISHU_APP_ID = "这里填你的真实 App ID".strip()
+FEISHU_APP_SECRET = "这里填你的真实 App Secret".strip()
 
 # =============================
 # 多维表格信息
@@ -260,28 +260,29 @@ html, body, [class*="css"], .stApp {
     font-family: "Microsoft YaHei", "微软雅黑", "PingFang SC", "Hiragino Sans GB", sans-serif !important;
     font-weight: 700 !important;
 }
+
 .block-container {
     padding-top: 1.0rem;
     padding-bottom: 2rem;
     max-width: 96rem;
 }
-.page-header-wrap {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    margin-bottom: 18px;
-}
-.page-title {
-    width: 100%;
+
+.top-header {
     text-align: center;
-    font-size: 40px;
-    line-height: 1.45;
+    margin-top: 0.1rem;
+    margin-bottom: 0.8rem;
+}
+
+.top-title {
+    font-size: 42px;
+    line-height: 1.5;
     font-weight: 900;
     color: #0f172a;
-    letter-spacing: 1px;
     margin: 0;
-    padding: 6px 0 2px 0;
+    letter-spacing: 1px;
+    white-space: nowrap;
 }
+
 div[data-testid="metric-container"] {
     background: linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%);
     border: 2px solid #d7e6ff;
@@ -289,22 +290,26 @@ div[data-testid="metric-container"] {
     border-radius: 24px;
     box-shadow: 0 8px 24px rgba(37, 99, 235, 0.08);
 }
+
 div[data-testid="metric-container"] label {
     font-size: 30px !important;
     font-weight: 900 !important;
 }
+
 div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
     font-size: 48px !important;
     font-weight: 900 !important;
 }
+
 .section-title {
-    font-size: 36px;
+    font-size: 34px;
     font-weight: 900;
-    margin-top: 10px;
+    margin-top: 12px;
     margin-bottom: 14px;
     color: #0f172a;
-    line-height: 1.45;
+    line-height: 1.5;
 }
+
 .case-card {
     background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
     border: 2px solid #dbeafe;
@@ -313,34 +318,39 @@ div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
     margin-bottom: 18px;
     box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
 }
+
 .case-title {
     font-size: 28px;
     font-weight: 900;
     margin-bottom: 10px;
     color: #111827;
-    line-height: 1.45;
+    line-height: 1.5;
 }
+
 .case-meta {
     font-size: 20px;
     font-weight: 800;
     color: #334155;
     margin-bottom: 12px;
-    line-height: 1.6;
+    line-height: 1.7;
 }
+
 .case-answer {
     font-size: 22px;
     font-weight: 700;
-    line-height: 1.95;
+    line-height: 2.0;
     color: #0f172a;
     margin-bottom: 12px;
 }
+
 .case-tag {
     font-size: 19px;
     font-weight: 700;
     color: #475569;
     margin-bottom: 6px;
-    line-height: 1.7;
+    line-height: 1.8;
 }
+
 div[data-testid="stExpander"] details summary p {
     font-size: 22px !important;
     font-weight: 800 !important;
@@ -349,13 +359,15 @@ div[data-testid="stExpander"] details summary p {
 </style>
 """, unsafe_allow_html=True)
 
-header_left, header_right = st.columns([8, 2])
+st.markdown("""
+<div class="top-header">
+    <div class="top-title">班级实时学情分析</div>
+</div>
+""", unsafe_allow_html=True)
 
-with header_left:
-    st.markdown('<div class="page-title">班级实时学情分析</div>', unsafe_allow_html=True)
-
-with header_right:
-    refresh_clicked = st.button("刷新统计", type="primary", use_container_width=True)
+btn_left, btn_right = st.columns([8.5, 1.5])
+with btn_right:
+    refresh_clicked = st.button("刷新统计", type="primary")
 
 if refresh_clicked:
     try:
