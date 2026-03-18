@@ -62,7 +62,7 @@ with tab1:
             with st.spinner("正在从云端读取统计结果..."):
                 # 1. 构建请求参数
                 payload = {
-                    "workflow_id": WORKFLOW_ID,
+                    "workflow_id": "7618540807894073354",
                     "version": "latest",
                     "parameters": {}
                 }
