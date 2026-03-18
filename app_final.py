@@ -53,74 +53,30 @@ with tab1:
     st.title("🏥 班级实时学情分析")
 
     if st.button("🔄 刷新统计看板", type="primary"):
-        headers = {
-            "Authorization": f"Bearer {PERSONAL_ACCESS_TOKEN}",
-            "Content-Type": "application/json"
-        }
-
         try:
             with st.spinner("正在读取统计结果..."):
-                payload = {
-                    "workflow_id": "7618540807894073354",
-                    "version": "latest",
-                    "parameters": {}
+                # 先固定为本地测试数据，保证教师端大屏稳定可用
+                st.warning("当前展示的是演示统计值，不是实时结果。")
+
+                s = {
+                    "total": 3,
+                    "l0": 0,
+                    "l1": 2,
+                    "l2": 1,
+                    "l3": 0,
+                    "adh": 1,
+                    "anp": 1,
+                    "raas": 3
                 }
 
-                res = requests.post(API_URL, headers=headers, json=payload, timeout=30)
-                res.raise_for_status()
-                res_data = res.json()
-
-                st.write("### 🔍 调试信息")
-                st.write("**API原始响应:**")
-                st.json(res_data)
-
-                if res_data.get("interrupt_data"):
-                    st.warning("当前展示的是演示统计值，不是实时结果。")
-                    s = {
-                        "total": 3,
-                        "l0": 0,
-                        "l1": 2,
-                        "l2": 1,
-                        "l3": 0,
-                        "adh": 1,
-                        "anp": 1,
-                        "raas": 3
-                    }
-                else:
-                    s = {
-                        "total": 3,
-                        "l0": 0,
-                        "l1": 2,
-                        "l2": 1,
-                        "l3": 0,
-                        "adh": 1,
-                        "anp": 1,
-                        "raas": 3
-                    }
-                    s = demo_data
-                else:
-                    raw = res_data.get("data", "{}")
-                    outer = json.loads(raw) if isinstance(raw, str) else raw
-                    inner = outer.get("data", {})
-                    inner = json.loads(inner) if isinstance(inner, str) else inner
-                    s = inner.get("report_data", {})
-
-                def to_int(v, default=0):
-                    try:
-                        if v is None or v == "":
-                            return default
-                        return int(float(v))
-                    except Exception:
-                        return default
-
-                total = to_int(s.get("total", 0))
-                l0 = to_int(s.get("l0", 0))
-                l1 = to_int(s.get("l1", 0))
-                l2 = to_int(s.get("l2", 0))
-                l3 = to_int(s.get("l3", 0))
-                adh = to_int(s.get("adh", 0))
-                anp = to_int(s.get("anp", 0))
-                raas = to_int(s.get("raas", 0))
+                total = s["total"]
+                l0 = s["l0"]
+                l1 = s["l1"]
+                l2 = s["l2"]
+                l3 = s["l3"]
+                adh = s["adh"]
+                anp = s["anp"]
+                raas = s["raas"]
 
                 st.write("**当前用于展示的统计结果：**")
                 st.json(s)
@@ -174,6 +130,7 @@ with tab1:
 
         except Exception as e:
             st.error(f"❌ 教师端渲染失败: {str(e)}")
+
 # ================= 5. 学生端（保持不变） =================
 with tab2:
     st.title("📝 学生答题")
