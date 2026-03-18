@@ -104,17 +104,33 @@ with tab1:
                     else:
                         return obj
 
-                def pick_stats(obj):
-                    """
-                    从多种可能的返回结构里提取统计结果
-                    兼容：
-                    1) {"report_data": {...}}
-                    2) {"total_answers": ..., "level0": ...}
-                    3) {"output": {...}}
-                    4) {"data": {...}}
-                    """
-                    if not isinstance(obj, dict):
-                        return {}
+def pick_stats(obj):
+    if not isinstance(obj, dict):
+        return {}
+
+    if isinstance(obj.get("report_data"), dict):
+        return obj["report_data"]
+
+    flat_keys = {
+        "total_answers", "level0", "level1", "level2", "level3",
+        "miss_adh", "miss_anp", "miss_raas",
+        "total", "l0", "l1", "l2", "l3", "adh", "anp", "raas"
+    }
+    if any(k in obj for k in flat_keys):
+        return obj
+
+    for key in ["output", "data", "result"]:
+        if key in obj:
+            found = pick_stats(obj[key])
+            if found:
+                return found
+
+    if isinstance(obj.get("outputList"), list) and len(obj["outputList"]) > 0:
+        found = pick_stats(obj["outputList"][0])
+        if found:
+            return found
+
+    return {}
 
                     # 优先 1：标准包装 report_data
                     if isinstance(obj.get("report_data"), dict):
