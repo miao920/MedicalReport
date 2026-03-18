@@ -81,6 +81,7 @@ with tab1:
                 st.json(res_data)
 
                 # ========== 工具函数 ==========
+                # ========== 工具函数 ==========
                 def try_json_load(x):
                     """如果是 JSON 字符串就解析，否则原样返回"""
                     if isinstance(x, str):
@@ -104,33 +105,41 @@ with tab1:
                     else:
                         return obj
 
-def pick_stats(obj):
-    if not isinstance(obj, dict):
-        return {}
+                def pick_stats(obj):
+                    if not isinstance(obj, dict):
+                        return {}
 
-    if isinstance(obj.get("report_data"), dict):
-        return obj["report_data"]
+                    if isinstance(obj.get("report_data"), dict):
+                        return obj["report_data"]
 
-    flat_keys = {
-        "total_answers", "level0", "level1", "level2", "level3",
-        "miss_adh", "miss_anp", "miss_raas",
-        "total", "l0", "l1", "l2", "l3", "adh", "anp", "raas"
-    }
-    if any(k in obj for k in flat_keys):
-        return obj
+                    flat_keys = {
+                        "total_answers", "level0", "level1", "level2", "level3",
+                        "miss_adh", "miss_anp", "miss_raas",
+                        "total", "l0", "l1", "l2", "l3", "adh", "anp", "raas"
+                    }
+                    if any(k in obj for k in flat_keys):
+                        return obj
 
-    for key in ["output", "data", "result"]:
-        if key in obj:
-            found = pick_stats(obj[key])
-            if found:
-                return found
+                    for key in ["output", "data", "result"]:
+                        if key in obj:
+                            found = pick_stats(obj[key])
+                            if found:
+                                return found
 
-    if isinstance(obj.get("outputList"), list) and len(obj["outputList"]) > 0:
-        found = pick_stats(obj["outputList"][0])
-        if found:
-            return found
+                    if isinstance(obj.get("outputList"), list) and len(obj["outputList"]) > 0:
+                        found = pick_stats(obj["outputList"][0])
+                        if found:
+                            return found
 
-    return {}
+                    return {}
+
+                def to_int(v, default=0):
+                    try:
+                        if v is None or v == "":
+                            return default
+                        return int(float(v))
+                    except Exception:
+                        return default
 
                     # 优先 1：标准包装 report_data
                     if isinstance(obj.get("report_data"), dict):
