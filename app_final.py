@@ -191,7 +191,7 @@ with tab1:
                 st.json(s)
 
                 # 5. 提取统计结果
-                s = level2.get("report_data", {})
+                s = level2.get("report_data", level2)
 
                 st.write("**提取到的统计结果对象:**")
                 st.json(s)
