@@ -47,107 +47,223 @@ st.markdown("""
 tab1, tab_diag, tab2 = st.tabs(["🏥 班级实时学情分析", "🔬 数据连接诊断", "📝 学生答题"])
 
 # ================= 教师端：学情看板（完整修正版） =================
+# ================= 教师端：学情看板（稳健兼容版） =================
 with tab1:
     st.title("🏥 班级实时学情分析")
-    
-    if st.button('🔄 刷新统计看板', type="primary"):
-        headers = {"Authorization": f"Bearer {PERSONAL_ACCESS_TOKEN}", "Content-Type": "application/json"}
+
+    if st.button("🔄 刷新统计看板", type="primary"):
+        headers = {
+            "Authorization": f"Bearer {PERSONAL_ACCESS_TOKEN}",
+            "Content-Type": "application/json"
+        }
+
         try:
             with st.spinner("正在从云端读取统计结果..."):
                 # 1. 构建请求参数
-                payload = { "workflow_id": WORKFLOW_ID,"version": "latest",  # 强制最新版
-    "parameters": {}
-}
-               
-                # 2. 调试信息：显示发送的请求
+                payload = {
+                    "workflow_id": WORKFLOW_ID,
+                    "version": "latest",
+                    "parameters": {}
+                }
+
+                # 2. 调试信息
                 st.write("### 🔍 调试信息")
                 st.write("**发送的请求:**")
                 st.json(payload)
-                
-                # 3. 调用API
-                res = requests.post(API_URL, headers=headers, json=payload)
+
+                # 3. 调用 API
+                res = requests.post(API_URL, headers=headers, json=payload, timeout=30)
+                res.raise_for_status()
                 res_data = res.json()
-                
-                # 4. 调试信息：显示原始响应
+
                 st.write("**API原始响应:**")
                 st.json(res_data)
-                
-                # 5. 解析数据
-                raw_content = res_data.get("data", "{}")
+
+                # ========== 工具函数 ==========
+                def try_json_load(x):
+                    """如果是 JSON 字符串就解析，否则原样返回"""
+                    if isinstance(x, str):
+                        x = x.strip()
+                        if not x:
+                            return {}
+                        try:
+                            return json.loads(x)
+                        except Exception:
+                            return x
+                    return x
+
+                def normalize_obj(obj):
+                    """递归解析可能嵌套的 JSON 字符串"""
+                    obj = try_json_load(obj)
+
+                    if isinstance(obj, dict):
+                        return {k: normalize_obj(v) for k, v in obj.items()}
+                    elif isinstance(obj, list):
+                        return [normalize_obj(v) for v in obj]
+                    else:
+                        return obj
+
+                def pick_stats(obj):
+                    """
+                    从多种可能的返回结构里提取统计结果
+                    兼容：
+                    1) {"report_data": {...}}
+                    2) {"total_answers": ..., "level0": ...}
+                    3) {"output": {...}}
+                    4) {"data": {...}}
+                    """
+                    if not isinstance(obj, dict):
+                        return {}
+
+                    # 优先 1：标准包装 report_data
+                    if isinstance(obj.get("report_data"), dict):
+                        return obj["report_data"]
+
+                    # 优先 2：扁平统计字段直接在当前层
+                    flat_keys = {"total_answers", "level0", "level1", "level2", "level3",
+                                 "miss_adh", "miss_anp", "miss_raas",
+                                 "total", "l0", "l1", "l2", "l3", "adh", "anp", "raas"}
+                    if any(k in obj for k in flat_keys):
+                        return obj
+
+                    # 递归尝试 output / data / outputList[0]
+                    for key in ["output", "data", "result"]:
+                        if key in obj and isinstance(obj[key], dict):
+                            found = pick_stats(obj[key])
+                            if found:
+                                return found
+
+                    if isinstance(obj.get("outputList"), list) and len(obj["outputList"]) > 0:
+                        first_item = obj["outputList"][0]
+                        if isinstance(first_item, dict):
+                            found = pick_stats(first_item)
+                            if found:
+                                return found
+
+                    return {}
+
+                def to_int(v, default=0):
+                    try:
+                        if v is None or v == "":
+                            return default
+                        return int(float(v))
+                    except Exception:
+                        return default
+
+                # 4. 解析 data 字段
+                raw_content = res_data.get("data", {})
                 st.write("**data字段原始内容:**", raw_content)
-                
-                # 处理可能是字符串的JSON
-                if isinstance(raw_content, str):
-                    data_obj = json.loads(raw_content)
-                else:
-                    data_obj = raw_content
-                
-                # 6. 获取统计结果（关键：这里用 report_data）
-                s = data_obj.get("report_data", {})
-                
-                st.write("**解析后的统计结果:**", s)
-                
-                total = s.get("total", 0)
-                
-                # 7. 如果有数据，显示图表
+
+                data_obj = normalize_obj(raw_content)
+
+                st.write("**data字段解析后内容:**")
+                st.json(data_obj)
+
+                # 5. 提取统计结果
+                s = pick_stats(data_obj)
+
+                st.write("**提取到的统计结果对象:**")
+                st.json(s)
+
+                # 6. 同时兼容两套字段命名
+                total = to_int(s.get("total", s.get("total_answers", 0)))
+                l0 = to_int(s.get("l0", s.get("level0", 0)))
+                l1 = to_int(s.get("l1", s.get("level1", 0)))
+                l2 = to_int(s.get("l2", s.get("level2", 0)))
+                l3 = to_int(s.get("l3", s.get("level3", 0)))
+
+                adh = to_int(s.get("adh", s.get("miss_adh", 0)))
+                anp = to_int(s.get("anp", s.get("miss_anp", 0)))
+                raas = to_int(s.get("raas", s.get("miss_raas", 0)))
+
+                st.write("**兼容解析后的关键指标:**")
+                st.json({
+                    "total": total,
+                    "l0": l0,
+                    "l1": l1,
+                    "l2": l2,
+                    "l3": l3,
+                    "adh": adh,
+                    "anp": anp,
+                    "raas": raas
+                })
+
+                # 7. 显示看板
                 if total > 0:
                     st.balloons()
-                    
+
                     # --- 第一行：核心指标卡 ---
                     col1, col2, col3 = st.columns(3)
-                    
+
                     with col1:
                         st.metric("累计提交人数", f"{total} 人")
-                    
+
                     with col2:
-                        pass_n = s.get("l1", 0) + s.get("l2", 0) + s.get("l3", 0)
+                        pass_n = l1 + l2 + l3
                         st.metric("及格人数", f"{pass_n} 人")
-                    
+
                     with col3:
                         pass_rate = (pass_n / total * 100) if total > 0 else 0
                         st.metric("及格率", f"{pass_rate:.1f}%")
-                    
+
                     st.markdown("---")
-                    
+
                     # --- 第二行：可视化图表 ---
                     chart1, chart2 = st.columns(2)
-                    
+
                     with chart1:
-                        # 成绩分布饼图
                         fig_pie = px.pie(
                             names=["L0(不及格)", "L1(及格)", "L2(良好)", "L3(优秀)"],
-                            values=[s.get("l0", 0), s.get("l1", 0), s.get("l2", 0), s.get("l3", 0)],
+                            values=[l0, l1, l2, l3],
                             title="🏆 成绩等级分布",
                             hole=0.4,
                             color_discrete_sequence=px.colors.sequential.RdBu
                         )
                         st.plotly_chart(fig_pie, use_container_width=True)
-                    
+
                     with chart2:
-                        # 知识点缺失柱状图
                         fig_bar = px.bar(
                             x=["ADH缺失", "ANP缺失", "RAAS缺失"],
-                            y=[s.get("adh", 0), s.get("anp", 0), s.get("raas", 0)],
+                            y=[adh, anp, raas],
                             title="🔍 关键知识点薄弱项统计",
-                            labels={'x': '知识点', 'y': '人数'},
-                            color_discrete_sequence=['#F63366']
+                            labels={"x": "知识点", "y": "人数"},
+                            color_discrete_sequence=["#F63366"]
                         )
                         st.plotly_chart(fig_bar, use_container_width=True)
-                    
-                    # --- 第三行：详细数据表格（可选）---
+
+                    # --- 第三行：详细数据表格 ---
                     with st.expander("📋 查看详细统计数据"):
-                        st.write("### 完整统计结果")
+                        st.write("### 完整统计结果（原始提取对象）")
                         st.json(s)
-                
+
+                        st.write("### 标准化后的统计结果")
+                        st.json({
+                            "total": total,
+                            "l0": l0,
+                            "l1": l1,
+                            "l2": l2,
+                            "l3": l3,
+                            "adh": adh,
+                            "anp": anp,
+                            "raas": raas
+                        })
+
                 else:
-                    st.warning("⚠️ 当前统计人数为 0。这可能是因为：\n"
-                              "1. 数据库中没有学生答题记录\n"
-                              "2. 工作流中的数据源节点（SQL查询）返回为空\n"
-                              "3. 请查看上面的调试信息，确认API返回内容")
-                    
+                    st.warning(
+                        "⚠️ 当前统计人数为 0。\n\n"
+                        "请重点查看上面的三段调试信息：\n"
+                        "1. API原始响应\n"
+                        "2. data字段原始内容\n"
+                        "3. 提取到的统计结果对象\n"
+                    )
+
+        except requests.exceptions.RequestException as e:
+            st.error(f"❌ API请求失败: {str(e)}")
+            st.error("请检查：\n1. Coze Token是否有效\n2. Workflow ID是否正确\n3. 网络连接是否正常")
+
         except Exception as e:
             st.error(f"❌ 渲染看板失败: {str(e)}")
-            st.error("请检查：\n1. Coze Token是否有效\n2. 工作流ID是否正确\n3. 网络连接是否正常")
+            st.error("请检查工作流返回结构是否为合法 JSON，或把上方调试信息发出来继续排查。")
 
 # ================= 4. 诊断 TAB（已修复） =================
 with tab_diag:
