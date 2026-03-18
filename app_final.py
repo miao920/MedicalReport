@@ -361,7 +361,7 @@ if st.button("🔄 刷新统计看板", type="primary"):
         weak_examples = s["weak_examples"]
 
         # 模块1
-        st.markdown('<div class="module-title">模块一：累计提交人数与优良率</div>', unsafe_allow_html=True)
+        st.markdown('<div class="module-title">累计提交人数与优良率</div>', unsafe_allow_html=True)
         m1, m2 = st.columns(2)
         with m1:
             st.metric("累计提交人数", f"{total} 人")
@@ -371,7 +371,7 @@ if st.button("🔄 刷新统计看板", type="primary"):
         st.markdown("---")
 
         # 模块2
-        st.markdown('<div class="module-title">模块二：作答等级分布</div>', unsafe_allow_html=True)
+        st.markdown('<div class="module-title">作答等级分布</div>', unsafe_allow_html=True)
         level_df = pd.DataFrame({
             "等级水平": ["Level0", "Level1", "Level2", "Level3"],
             "占比人数": [l0, l1, l2, l3]
@@ -405,7 +405,7 @@ if st.button("🔄 刷新统计看板", type="primary"):
         st.markdown("---")
 
         # 模块3
-        st.markdown('<div class="module-title">模块三：知识点命中率</div>', unsafe_allow_html=True)
+        st.markdown('<div class="module-title">知识点命中率</div>', unsafe_allow_html=True)
         hit_rate_df = pd.DataFrame({
             "知识点": [
                 "肾小球滤过膜通透性增高",
@@ -457,7 +457,7 @@ if st.button("🔄 刷新统计看板", type="primary"):
         st.markdown("---")
 
         # 模块4
-        st.markdown('<div class="module-title">模块四：常见失分点 Top3</div>', unsafe_allow_html=True)
+        st.markdown('<div class="module-title">常见失分点 Top3</div>', unsafe_allow_html=True)
         if top_missing_points:
             top_df = pd.DataFrame(top_missing_points)
             top_df.columns = ["常见失分点", "出现次数"]
@@ -498,7 +498,7 @@ if st.button("🔄 刷新统计看板", type="primary"):
         st.markdown("---")
 
         # 模块5
-        st.markdown('<div class="module-title">模块五：代表性答案展示</div>', unsafe_allow_html=True)
+        st.markdown('<div class="module-title">代表性答案展示</div>', unsafe_allow_html=True)
         ex1, ex2, ex3 = st.columns(3)
 
         def render_examples(title, examples):
