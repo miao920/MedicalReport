@@ -9,8 +9,8 @@ st.set_page_config(page_title="课堂实时学情看板", layout="wide")
 # =============================
 # 飞书开放平台自建应用凭证
 # =============================
-FEISHU_APP_ID = "这里填你的真实 App ID".strip()
-FEISHU_APP_SECRET = "这里填你的真实 App Secret".strip()
+FEISHU_APP_ID = "cli_a9302c7babf89cd4".strip()
+FEISHU_APP_SECRET = "15hzGFmO4NIai0j9dKIAodLhXzaoWLZm".strip()
 
 # =============================
 # 多维表格信息
