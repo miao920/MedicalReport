@@ -126,14 +126,6 @@ def calc_report(df: pd.DataFrame):
             "l1": 0,
             "l2": 0,
             "l3": 0,
-            "kp1": 0,
-            "kp2": 0,
-            "kp3": 0,
-            "kp4": 0,
-            "kp5": 0,
-            "kp6": 0,
-            "kp7": 0,
-            "kp8": 0,
             "kp1_rate": 0,
             "kp2_rate": 0,
             "kp3_rate": 0,
@@ -248,14 +240,6 @@ def calc_report(df: pd.DataFrame):
         "l1": l1,
         "l2": l2,
         "l3": l3,
-        "kp1": kp1,
-        "kp2": kp2,
-        "kp3": kp3,
-        "kp4": kp4,
-        "kp5": kp5,
-        "kp6": kp6,
-        "kp7": kp7,
-        "kp8": kp8,
         "kp1_rate": round(kp1 / total * 100, 1) if total > 0 else 0,
         "kp2_rate": round(kp2 / total * 100, 1) if total > 0 else 0,
         "kp3_rate": round(kp3 / total * 100, 1) if total > 0 else 0,
@@ -274,55 +258,72 @@ def calc_report(df: pd.DataFrame):
 
 st.markdown("""
 <style>
+html, body, [class*="css"] {
+    font-weight: 700 !important;
+}
+.block-container {
+    padding-top: 1.2rem;
+    padding-bottom: 2rem;
+    max-width: 96rem;
+}
 div[data-testid="metric-container"] {
-    background-color: #f8fafc;
-    border: 2px solid #d1d5db;
-    padding: 22px;
-    border-radius: 18px;
+    background: linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%);
+    border: 2px solid #d7e6ff;
+    padding: 28px;
+    border-radius: 24px;
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.08);
 }
 div[data-testid="metric-container"] label {
-    font-size: 28px !important;
-    font-weight: 800 !important;
-}
-div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
-    font-size: 42px !important;
+    font-size: 30px !important;
     font-weight: 900 !important;
 }
-.big-title {
+div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
+    font-size: 48px !important;
+    font-weight: 900 !important;
+}
+.module-title {
     font-size: 40px;
     font-weight: 900;
-    margin-bottom: 12px;
+    margin-top: 14px;
+    margin-bottom: 16px;
+    color: #0f172a;
 }
 .case-card {
-    background: #ffffff;
-    border: 2px solid #d1d5db;
-    border-radius: 18px;
-    padding: 18px;
-    margin-bottom: 16px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border: 2px solid #dbeafe;
+    border-radius: 22px;
+    padding: 20px;
+    margin-bottom: 18px;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
 }
 .case-title {
-    font-size: 28px;
+    font-size: 30px;
     font-weight: 900;
     margin-bottom: 10px;
+    color: #111827;
 }
 .case-meta {
     font-size: 20px;
-    font-weight: 700;
-    color: #374151;
-    margin-bottom: 10px;
+    font-weight: 800;
+    color: #334155;
+    margin-bottom: 12px;
 }
 .case-answer {
     font-size: 22px;
     font-weight: 700;
-    line-height: 1.8;
-    color: #111827;
-    margin-bottom: 10px;
+    line-height: 1.9;
+    color: #0f172a;
+    margin-bottom: 12px;
 }
 .case-tag {
     font-size: 19px;
     font-weight: 700;
-    color: #4b5563;
+    color: #475569;
     margin-bottom: 6px;
+}
+div[data-testid="stExpander"] details summary p {
+    font-size: 22px !important;
+    font-weight: 800 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -359,130 +360,145 @@ if st.button("🔄 刷新统计看板", type="primary"):
         mid_examples = s["mid_examples"]
         weak_examples = s["weak_examples"]
 
-        st.markdown('<div class="big-title">📊 课堂总体情况</div>', unsafe_allow_html=True)
-
-        c1, c2 = st.columns([1, 1])
-        with c1:
+        # 模块1
+        st.markdown('<div class="module-title">模块一：累计提交人数与优良率</div>', unsafe_allow_html=True)
+        m1, m2 = st.columns(2)
+        with m1:
             st.metric("累计提交人数", f"{total} 人")
-        with c2:
+        with m2:
             st.metric("优良率（Level2 + Level3）", f"{s['excellent_rate']}%")
 
         st.markdown("---")
 
-        chart1, chart2 = st.columns(2)
-
-        with chart1:
-            level_df = pd.DataFrame({
-                "等级水平": ["Level0", "Level1", "Level2", "Level3"],
-                "占比人数": [l0, l1, l2, l3]
-            })
-
-            fig_pie = px.pie(
-                level_df,
-                names="等级水平",
-                values="占比人数",
-                title="🏆 作答等级分布",
-                hole=0.42
-            )
-            fig_pie.update_traces(
-                textfont_size=26,
-                textinfo="percent+label"
-            )
-            fig_pie.update_layout(
-                height=620,
-                title_font_size=30,
-                font=dict(size=24),
-                legend=dict(font=dict(size=22))
-            )
-            st.plotly_chart(fig_pie, use_container_width=True)
-
-        with chart2:
-            hit_rate_df = pd.DataFrame({
-                "知识点": [
-                    "肾小球滤过膜通透性增高",
-                    "大量蛋白尿",
-                    "低白蛋白血症",
-                    "血浆胶体渗透压下降",
-                    "有效循环血量减少",
-                    "RAAS系统激活",
-                    "肾血管收缩或肾小球滤过率降低",
-                    "醛固酮/抗利尿激素增多致肾小管钠水重吸收增加"
-                ],
-                "命中率": [
-                    kp1_rate, kp2_rate, kp3_rate, kp4_rate,
-                    kp5_rate, kp6_rate, kp7_rate, kp8_rate
-                ]
-            })
-
-            fig_hit = px.bar(
-                hit_rate_df,
-                x="命中率",
-                y="知识点",
+        # 模块2
+        st.markdown('<div class="module-title">模块二：作答等级分布</div>', unsafe_allow_html=True)
+        level_df = pd.DataFrame({
+            "等级水平": ["Level0", "Level1", "Level2", "Level3"],
+            "占比人数": [l0, l1, l2, l3]
+        })
+        fig_pie = px.pie(
+            level_df,
+            names="等级水平",
+            values="占比人数",
+            title="🏆 作答等级分布",
+            hole=0.42
+        )
+        fig_pie.update_traces(
+            textfont_size=28,
+            textinfo="percent+label"
+        )
+        fig_pie.update_layout(
+            height=700,
+            title_font_size=32,
+            font=dict(size=26),
+            legend=dict(
                 orientation="h",
-                text="命中率",
-                title="🎯 八个知识点命中率"
+                yanchor="bottom",
+                y=-0.15,
+                xanchor="center",
+                x=0.5,
+                font=dict(size=24)
             )
-            fig_hit.update_traces(
-                texttemplate="%{x}%",
+        )
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+        st.markdown("---")
+
+        # 模块3
+        st.markdown('<div class="module-title">模块三：知识点命中率</div>', unsafe_allow_html=True)
+        hit_rate_df = pd.DataFrame({
+            "知识点": [
+                "肾小球滤过膜通透性增高",
+                "大量蛋白尿",
+                "低白蛋白血症",
+                "血浆胶体渗透压下降",
+                "有效循环血量减少",
+                "RAAS系统激活",
+                "肾血管收缩或肾小球滤过率降低",
+                "醛固酮/抗利尿激素增多致肾小管钠水重吸收增加"
+            ],
+            "命中率": [
+                kp1_rate, kp2_rate, kp3_rate, kp4_rate,
+                kp5_rate, kp6_rate, kp7_rate, kp8_rate
+            ]
+        }).sort_values("命中率", ascending=True)
+
+        fig_hit = px.bar(
+            hit_rate_df,
+            x="命中率",
+            y="知识点",
+            orientation="h",
+            text="命中率",
+            title="🎯 知识点命中率"
+        )
+        fig_hit.update_traces(
+            texttemplate="%{x}%",
+            textposition="outside",
+            textfont_size=24
+        )
+        fig_hit.update_layout(
+            height=860,
+            title_font_size=32,
+            font=dict(size=24),
+            xaxis_title="命中率（%）",
+            yaxis_title="",
+            xaxis=dict(
+                tickfont=dict(size=22),
+                title_font=dict(size=26)
+            ),
+            yaxis=dict(
+                tickfont=dict(size=22),
+                title_font=dict(size=26)
+            ),
+            margin=dict(l=40, r=80, t=80, b=40)
+        )
+        st.plotly_chart(fig_hit, use_container_width=True)
+
+        st.markdown("---")
+
+        # 模块4
+        st.markdown('<div class="module-title">模块四：常见失分点 Top3</div>', unsafe_allow_html=True)
+        if top_missing_points:
+            top_df = pd.DataFrame(top_missing_points)
+            top_df.columns = ["常见失分点", "出现次数"]
+            top_df = top_df.sort_values("出现次数", ascending=True)
+
+            fig_top = px.bar(
+                top_df,
+                x="出现次数",
+                y="常见失分点",
+                orientation="h",
+                text="出现次数",
+                title="📌 常见失分点 Top3"
+            )
+            fig_top.update_traces(
                 textposition="outside",
-                textfont_size=22
+                textfont_size=24
             )
-            fig_hit.update_layout(
-                height=780,
-                title_font_size=30,
-                font=dict(size=22),
-                xaxis_title="命中率（%）",
+            fig_top.update_layout(
+                height=520,
+                title_font_size=32,
+                font=dict(size=24),
+                xaxis_title="出现次数",
                 yaxis_title="",
-                xaxis=dict(tickfont=dict(size=20), title_font=dict(size=24)),
-                yaxis=dict(tickfont=dict(size=20), title_font=dict(size=24))
+                xaxis=dict(
+                    tickfont=dict(size=22),
+                    title_font=dict(size=26)
+                ),
+                yaxis=dict(
+                    tickfont=dict(size=24),
+                    title_font=dict(size=26)
+                ),
+                margin=dict(l=40, r=60, t=80, b=40)
             )
-            st.plotly_chart(fig_hit, use_container_width=True)
+            st.plotly_chart(fig_top, use_container_width=True)
+        else:
+            st.info("暂无可展示的常见失分点。")
 
         st.markdown("---")
 
-        chart3, chart4 = st.columns(2)
-
-        with chart3:
-            if top_missing_points:
-                top_df = pd.DataFrame(top_missing_points)
-                top_df.columns = ["常见失分点", "出现次数"]
-
-                fig_top = px.bar(
-                    top_df,
-                    x="出现次数",
-                    y="常见失分点",
-                    orientation="h",
-                    text="出现次数",
-                    title="📌 常见失分点 Top3"
-                )
-                fig_top.update_traces(
-                    textposition="outside",
-                    textfont_size=22
-                )
-                fig_top.update_layout(
-                    height=520,
-                    title_font_size=30,
-                    font=dict(size=22),
-                    xaxis_title="出现次数",
-                    yaxis_title="",
-                    xaxis=dict(tickfont=dict(size=20), title_font=dict(size=24)),
-                    yaxis=dict(tickfont=dict(size=20), title_font=dict(size=24))
-                )
-                st.plotly_chart(fig_top, use_container_width=True)
-            else:
-                st.info("暂无可展示的失分点 Top3。")
-
-        with chart4:
-            summary_df = pd.DataFrame({
-                "指标": ["总提交人数", "优良率"],
-                "数值": [f"{total} 人", f"{s['excellent_rate']}%"]
-            })
-            st.markdown('<div class="big-title">📍 课堂摘要</div>', unsafe_allow_html=True)
-            st.dataframe(summary_df, use_container_width=True, hide_index=True)
-
-        st.markdown("---")
-        st.markdown('<div class="big-title">📝 代表性答案展示</div>', unsafe_allow_html=True)
-
+        # 模块5
+        st.markdown('<div class="module-title">模块五：代表性答案展示</div>', unsafe_allow_html=True)
         ex1, ex2, ex3 = st.columns(3)
 
         def render_examples(title, examples):
@@ -503,10 +519,8 @@ if st.button("🔄 刷新统计看板", type="primary"):
 
         with ex1:
             render_examples("🌟 优秀答案示例", best_examples)
-
         with ex2:
             render_examples("🟡 中等答案示例", mid_examples)
-
         with ex3:
             render_examples("🔍 典型薄弱答案", weak_examples)
 
