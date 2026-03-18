@@ -18,8 +18,6 @@ FEISHU_APP_SECRET = "15hzGFmO4NIai0j9dKIAodLhXzaoWLZm".strip()
 APP_TOKEN = "J9qZba697aEirjsYiAQcodeUnue"
 TABLE_ID = "tblryfcocA6mYGuL"
 
-st.title("🏥 班级实时学情分析")
-
 
 def get_tenant_access_token():
     url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
@@ -258,13 +256,31 @@ def calc_report(df: pd.DataFrame):
 
 st.markdown("""
 <style>
-html, body, [class*="css"] {
+html, body, [class*="css"], .stApp {
+    font-family: "Microsoft YaHei", "微软雅黑", "PingFang SC", "Hiragino Sans GB", sans-serif !important;
     font-weight: 700 !important;
 }
 .block-container {
-    padding-top: 1.2rem;
+    padding-top: 1.0rem;
     padding-bottom: 2rem;
     max-width: 96rem;
+}
+.page-header-wrap {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 18px;
+}
+.page-title {
+    width: 100%;
+    text-align: center;
+    font-size: 40px;
+    line-height: 1.45;
+    font-weight: 900;
+    color: #0f172a;
+    letter-spacing: 1px;
+    margin: 0;
+    padding: 6px 0 2px 0;
 }
 div[data-testid="metric-container"] {
     background: linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%);
@@ -281,12 +297,13 @@ div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
     font-size: 48px !important;
     font-weight: 900 !important;
 }
-.module-title {
-    font-size: 40px;
+.section-title {
+    font-size: 36px;
     font-weight: 900;
-    margin-top: 14px;
-    margin-bottom: 16px;
+    margin-top: 10px;
+    margin-bottom: 14px;
     color: #0f172a;
+    line-height: 1.45;
 }
 .case-card {
     background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
@@ -297,21 +314,23 @@ div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
     box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
 }
 .case-title {
-    font-size: 30px;
+    font-size: 28px;
     font-weight: 900;
     margin-bottom: 10px;
     color: #111827;
+    line-height: 1.45;
 }
 .case-meta {
     font-size: 20px;
     font-weight: 800;
     color: #334155;
     margin-bottom: 12px;
+    line-height: 1.6;
 }
 .case-answer {
     font-size: 22px;
     font-weight: 700;
-    line-height: 1.9;
+    line-height: 1.95;
     color: #0f172a;
     margin-bottom: 12px;
 }
@@ -320,16 +339,25 @@ div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
     font-weight: 700;
     color: #475569;
     margin-bottom: 6px;
+    line-height: 1.7;
 }
 div[data-testid="stExpander"] details summary p {
     font-size: 22px !important;
     font-weight: 800 !important;
+    font-family: "Microsoft YaHei", "微软雅黑", sans-serif !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
+header_left, header_right = st.columns([8, 2])
 
-if st.button("🔄 刷新统计看板", type="primary"):
+with header_left:
+    st.markdown('<div class="page-title">班级实时学情分析</div>', unsafe_allow_html=True)
+
+with header_right:
+    refresh_clicked = st.button("刷新统计", type="primary", use_container_width=True)
+
+if refresh_clicked:
     try:
         with st.spinner("正在从飞书读取真实数据..."):
             access_token = get_tenant_access_token()
@@ -360,8 +388,7 @@ if st.button("🔄 刷新统计看板", type="primary"):
         mid_examples = s["mid_examples"]
         weak_examples = s["weak_examples"]
 
-        # 模块1
-        st.markdown('<div class="module-title">累计提交人数与优良率</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">累计提交人数与优良率</div>', unsafe_allow_html=True)
         m1, m2 = st.columns(2)
         with m1:
             st.metric("累计提交人数", f"{total} 人")
@@ -370,8 +397,7 @@ if st.button("🔄 刷新统计看板", type="primary"):
 
         st.markdown("---")
 
-        # 模块2
-        st.markdown('<div class="module-title">🏆作答等级分布</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">作答等级分布</div>', unsafe_allow_html=True)
         level_df = pd.DataFrame({
             "等级水平": ["Level0", "Level1", "Level2", "Level3"],
             "占比人数": [l0, l1, l2, l3]
@@ -388,23 +414,23 @@ if st.button("🔄 刷新统计看板", type="primary"):
         )
         fig_pie.update_layout(
             height=700,
-            title_font_size=32,
-            font=dict(size=26),
+            title=None,
+            font=dict(size=26, family="Microsoft YaHei"),
             legend=dict(
                 orientation="h",
                 yanchor="bottom",
                 y=-0.15,
                 xanchor="center",
                 x=0.5,
-                font=dict(size=24)
-            )
+                font=dict(size=24, family="Microsoft YaHei")
+            ),
+            margin=dict(l=20, r=20, t=20, b=80)
         )
         st.plotly_chart(fig_pie, use_container_width=True)
 
         st.markdown("---")
 
-        # 模块3
-        st.markdown('<div class="module-title">🎯知识点命中率</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">知识点命中率</div>', unsafe_allow_html=True)
         hit_rate_df = pd.DataFrame({
             "知识点": [
                 "肾小球滤过膜通透性增高",
@@ -427,8 +453,8 @@ if st.button("🔄 刷新统计看板", type="primary"):
             x="命中率",
             y="知识点",
             orientation="h",
-            text="命中率",
-            )
+            text="命中率"
+        )
         fig_hit.update_traces(
             texttemplate="%{x}%",
             textposition="outside",
@@ -436,26 +462,25 @@ if st.button("🔄 刷新统计看板", type="primary"):
         )
         fig_hit.update_layout(
             height=860,
-            title_font_size=32,
-            font=dict(size=24),
+            title=None,
+            font=dict(size=24, family="Microsoft YaHei"),
             xaxis_title="命中率（%）",
             yaxis_title="",
             xaxis=dict(
-                tickfont=dict(size=22),
-                title_font=dict(size=26)
+                tickfont=dict(size=22, family="Microsoft YaHei"),
+                title_font=dict(size=26, family="Microsoft YaHei")
             ),
             yaxis=dict(
-                tickfont=dict(size=22),
-                title_font=dict(size=26)
+                tickfont=dict(size=22, family="Microsoft YaHei"),
+                title_font=dict(size=26, family="Microsoft YaHei")
             ),
-            margin=dict(l=40, r=80, t=80, b=40)
+            margin=dict(l=40, r=80, t=20, b=40)
         )
         st.plotly_chart(fig_hit, use_container_width=True)
 
         st.markdown("---")
 
-        # 模块4
-        st.markdown('<div class="module-title">📌 常见失分点 Top3</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">常见失分点 Top3</div>', unsafe_allow_html=True)
         if top_missing_points:
             top_df = pd.DataFrame(top_missing_points)
             top_df.columns = ["常见失分点", "出现次数"]
@@ -466,27 +491,27 @@ if st.button("🔄 刷新统计看板", type="primary"):
                 x="出现次数",
                 y="常见失分点",
                 orientation="h",
-                text="出现次数",
-                )
+                text="出现次数"
+            )
             fig_top.update_traces(
                 textposition="outside",
                 textfont_size=24
             )
             fig_top.update_layout(
                 height=520,
-                title_font_size=32,
-                font=dict(size=24),
+                title=None,
+                font=dict(size=24, family="Microsoft YaHei"),
                 xaxis_title="出现次数",
                 yaxis_title="",
                 xaxis=dict(
-                    tickfont=dict(size=22),
-                    title_font=dict(size=26)
+                    tickfont=dict(size=22, family="Microsoft YaHei"),
+                    title_font=dict(size=26, family="Microsoft YaHei")
                 ),
                 yaxis=dict(
-                    tickfont=dict(size=24),
-                    title_font=dict(size=26)
+                    tickfont=dict(size=24, family="Microsoft YaHei"),
+                    title_font=dict(size=26, family="Microsoft YaHei")
                 ),
-                margin=dict(l=40, r=60, t=80, b=40)
+                margin=dict(l=40, r=60, t=20, b=40)
             )
             st.plotly_chart(fig_top, use_container_width=True)
         else:
@@ -494,8 +519,7 @@ if st.button("🔄 刷新统计看板", type="primary"):
 
         st.markdown("---")
 
-        # 模块5
-        st.markdown('<div class="module-title">代表性答案展示</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">代表性答案展示</div>', unsafe_allow_html=True)
         ex1, ex2, ex3 = st.columns(3)
 
         def render_examples(title, examples):
