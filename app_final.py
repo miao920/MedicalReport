@@ -9,8 +9,8 @@ st.set_page_config(page_title="课堂实时学情看板", layout="wide")
 # =============================
 # 飞书开放平台自建应用凭证
 # =============================
-FEISHU_APP_ID = "cli_a9302c7babf89cd4".strip()
-FEISHU_APP_SECRET = "15hzGFmO4NIai0j9dKIAodLhXzaoWLZm".strip()
+FEISHU_APP_ID = "这里填你的真实 App ID".strip()
+FEISHU_APP_SECRET = "这里填你的真实 App Secret".strip()
 
 # =============================
 # 多维表格信息
@@ -97,7 +97,7 @@ def normalize_cell_value(v):
                     vals.append(json.dumps(item, ensure_ascii=False))
             else:
                 vals.append(str(item))
-        return ",".join(vals)
+        return "；".join(vals)
 
     if isinstance(v, dict):
         if "text" in v:
@@ -128,7 +128,18 @@ def calc_report(df: pd.DataFrame):
             "l3": 0,
             "adh": 0,
             "anp": 0,
-            "raas": 0
+            "raas": 0,
+            "hit_adh": 0,
+            "hit_anp": 0,
+            "hit_raas": 0,
+            "hit_adh_rate": 0,
+            "hit_anp_rate": 0,
+            "hit_raas_rate": 0,
+            "excellent_rate": 0,
+            "top_missing_points": [],
+            "best_examples": [],
+            "mid_examples": [],
+            "weak_examples": []
         }
 
     score_series = (
@@ -143,16 +154,172 @@ def calc_report(df: pd.DataFrame):
         else pd.Series(dtype=str)
     )
 
+    hit_series = (
+        df["knowledge_hit"].fillna("").astype(str)
+        if "knowledge_hit" in df.columns
+        else pd.Series(dtype=str)
+    )
+
+    total = int(len(df[df.notna().any(axis=1)]))
+
+    l0 = int((score_series == "Level0").sum())
+    l1 = int((score_series == "Level1").sum())
+    l2 = int((score_series == "Level2").sum())
+    l3 = int((score_series == "Level3").sum())
+
+    adh = int(missing_series.str.contains("ADH|抗利尿激素", regex=True).sum())
+    anp = int(missing_series.str.contains("ANP|心房利钠肽", regex=True).sum())
+    raas = int(missing_series.str.contains("RAAS|醛固酮|肾素|血管紧张素", regex=True).sum())
+
+    hit_adh = int(hit_series.str.contains("ADH|抗利尿激素", regex=True).sum())
+    hit_anp = int(hit_series.str.contains("ANP|心房利钠肽", regex=True).sum())
+    hit_raas = int(hit_series.str.contains("RAAS|醛固酮|肾素|血管紧张素", regex=True).sum())
+
+    # ========= 常见失分点 Top3 =========
+    missing_counter = {}
+
+    if "missing_points" in df.columns:
+        for raw in df["missing_points"].fillna("").astype(str):
+            if not raw.strip():
+                continue
+
+            parts = (
+                raw.replace("；", "，")
+                .replace(";", "，")
+                .replace("|", "，")
+                .split("，")
+            )
+
+            for p in parts:
+                point = p.strip()
+                if point:
+                    missing_counter[point] = missing_counter.get(point, 0) + 1
+
+    top_missing_points = sorted(
+        missing_counter.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )[:3]
+
+    top_missing_points = [{"point": k, "count": v} for k, v in top_missing_points]
+
+    # ========= 代表性答案 =========
+    view_cols = []
+    for col in ["student_id", "score_level", "user_answer", "knowledge_hit", "missing_points", "timestamp"]:
+        if col in df.columns:
+            view_cols.append(col)
+
+    df_view = df[view_cols].copy() if view_cols else df.copy()
+
+    def pick_examples(level_name, max_n=2):
+        if "score_level" not in df_view.columns:
+            return []
+
+        sub = df_view[df_view["score_level"].astype(str) == level_name].copy()
+        if sub.empty:
+            return []
+
+        if "user_answer" in sub.columns:
+            sub["answer_len"] = sub["user_answer"].fillna("").astype(str).apply(len)
+            sub = sub.sort_values("answer_len", ascending=False)
+        else:
+            sub["answer_len"] = 0
+
+        examples = []
+        for _, row in sub.head(max_n).iterrows():
+            examples.append({
+                "student_id": str(row["student_id"]) if "student_id" in row and pd.notna(row["student_id"]) else "未提供",
+                "score_level": str(row["score_level"]) if "score_level" in row and pd.notna(row["score_level"]) else "",
+                "user_answer": str(row["user_answer"]) if "user_answer" in row and pd.notna(row["user_answer"]) else "",
+                "knowledge_hit": str(row["knowledge_hit"]) if "knowledge_hit" in row and pd.notna(row["knowledge_hit"]) else "",
+                "missing_points": str(row["missing_points"]) if "missing_points" in row and pd.notna(row["missing_points"]) else "",
+                "timestamp": str(row["timestamp"]) if "timestamp" in row and pd.notna(row["timestamp"]) else ""
+            })
+        return examples
+
+    best_examples = pick_examples("Level3", 2) + pick_examples("Level2", 1)
+    best_examples = best_examples[:2]
+
+    mid_examples = pick_examples("Level2", 1) + pick_examples("Level1", 2)
+    mid_examples = mid_examples[:2]
+
+    weak_examples = pick_examples("Level0", 2) + pick_examples("Level1", 1)
+    weak_examples = weak_examples[:2]
+
     return {
-        "total": int(len(df[df.notna().any(axis=1)])),
-        "l0": int((score_series == "Level0").sum()),
-        "l1": int((score_series == "Level1").sum()),
-        "l2": int((score_series == "Level2").sum()),
-        "l3": int((score_series == "Level3").sum()),
-        "adh": int(missing_series.str.contains("ADH|抗利尿激素", regex=True).sum()),
-        "anp": int(missing_series.str.contains("ANP|心房利钠肽", regex=True).sum()),
-        "raas": int(missing_series.str.contains("RAAS|醛固酮|肾素|血管紧张素", regex=True).sum())
+        "total": total,
+        "l0": l0,
+        "l1": l1,
+        "l2": l2,
+        "l3": l3,
+        "adh": adh,
+        "anp": anp,
+        "raas": raas,
+        "hit_adh": hit_adh,
+        "hit_anp": hit_anp,
+        "hit_raas": hit_raas,
+        "hit_adh_rate": round(hit_adh / total * 100, 1) if total > 0 else 0,
+        "hit_anp_rate": round(hit_anp / total * 100, 1) if total > 0 else 0,
+        "hit_raas_rate": round(hit_raas / total * 100, 1) if total > 0 else 0,
+        "excellent_rate": round((l2 + l3) / total * 100, 1) if total > 0 else 0,
+        "top_missing_points": top_missing_points,
+        "best_examples": best_examples,
+        "mid_examples": mid_examples,
+        "weak_examples": weak_examples
     }
+
+
+st.markdown("""
+<style>
+div[data-testid="metric-container"] {
+    background-color: #f8fafc;
+    border: 1px solid #e5e7eb;
+    padding: 18px;
+    border-radius: 16px;
+}
+div[data-testid="metric-container"] label {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+}
+div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
+    font-size: 34px !important;
+    font-weight: 800 !important;
+}
+.big-title {
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 10px;
+}
+.case-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 14px;
+}
+.case-title {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+.case-meta {
+    font-size: 16px;
+    color: #374151;
+    margin-bottom: 8px;
+}
+.case-answer {
+    font-size: 17px;
+    line-height: 1.7;
+    color: #111827;
+    margin-bottom: 8px;
+}
+.case-tag {
+    font-size: 15px;
+    color: #4b5563;
+    margin-bottom: 4px;
+}
+</style>
+""", unsafe_allow_html=True)
 
 
 if st.button("🔄 刷新统计看板", type="primary"):
@@ -164,50 +331,182 @@ if st.button("🔄 刷新统计看板", type="primary"):
             df_valid = df[df.notna().any(axis=1)].copy() if not df.empty else df
             s = calc_report(df_valid)
 
-        st.success("已读取飞书真实数据。")
-        st.write("**当前统计结果：**")
-        st.json(s)
-
         total = s["total"]
         l0 = s["l0"]
         l1 = s["l1"]
         l2 = s["l2"]
         l3 = s["l3"]
+
         adh = s["adh"]
         anp = s["anp"]
         raas = s["raas"]
 
-        col1, col2, col3 = st.columns(3)
+        hit_adh = s["hit_adh"]
+        hit_anp = s["hit_anp"]
+        hit_raas = s["hit_raas"]
+
+        hit_adh_rate = s["hit_adh_rate"]
+        hit_anp_rate = s["hit_anp_rate"]
+        hit_raas_rate = s["hit_raas_rate"]
+        excellent_rate = s["excellent_rate"]
+
+        top_missing_points = s["top_missing_points"]
+        best_examples = s["best_examples"]
+        mid_examples = s["mid_examples"]
+        weak_examples = s["weak_examples"]
+
+        st.success("已读取飞书真实数据。")
+
+        col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
             st.metric("累计提交人数", f"{total} 人")
         with col2:
-            pass_n = l1 + l2 + l3
-            st.metric("及格人数", f"{pass_n} 人")
+            st.metric("Level0", f"{l0} 人")
         with col3:
-            pass_rate = (pass_n / total * 100) if total > 0 else 0
-            st.metric("及格率", f"{pass_rate:.1f}%")
+            st.metric("Level1", f"{l1} 人")
+        with col4:
+            st.metric("Level2", f"{l2} 人")
+        with col5:
+            st.metric("Level3", f"{l3} 人")
+
+        st.markdown("---")
+
+        col6, col7, col8, col9 = st.columns(4)
+        with col6:
+            st.metric("ADH命中率", f"{hit_adh_rate}%")
+        with col7:
+            st.metric("ANP命中率", f"{hit_anp_rate}%")
+        with col8:
+            st.metric("RAAS命中率", f"{hit_raas_rate}%")
+        with col9:
+            st.metric("优良率（L2+L3）", f"{excellent_rate}%")
 
         st.markdown("---")
 
         chart1, chart2 = st.columns(2)
 
         with chart1:
+            level_df = pd.DataFrame({
+                "等级": ["Level0", "Level1", "Level2", "Level3"],
+                "人数": [l0, l1, l2, l3]
+            })
+
             fig_pie = px.pie(
-                names=["L0(不及格)", "L1(及格)", "L2(良好)", "L3(优秀)"],
-                values=[l0, l1, l2, l3],
-                title="🏆 成绩等级分布",
-                hole=0.4
+                level_df,
+                names="等级",
+                values="人数",
+                title="🏆 作答等级分布",
+                hole=0.45
+            )
+            fig_pie.update_layout(
+                height=520,
+                title_font_size=24,
+                font=dict(size=18)
             )
             st.plotly_chart(fig_pie, use_container_width=True)
 
         with chart2:
-            fig_bar = px.bar(
-                x=["ADH缺失", "ANP缺失", "RAAS缺失"],
-                y=[adh, anp, raas],
-                title="🔍 关键知识点薄弱项统计",
-                labels={"x": "知识点", "y": "人数"}
+            hit_rate_df = pd.DataFrame({
+                "知识点": ["ADH", "ANP", "RAAS"],
+                "命中率": [hit_adh_rate, hit_anp_rate, hit_raas_rate]
+            })
+
+            fig_hit = px.bar(
+                hit_rate_df,
+                x="知识点",
+                y="命中率",
+                text="命中率",
+                title="🎯 关键知识点命中率"
             )
-            st.plotly_chart(fig_bar, use_container_width=True)
+            fig_hit.update_traces(texttemplate="%{y}%", textposition="outside")
+            fig_hit.update_layout(
+                height=520,
+                title_font_size=24,
+                font=dict(size=18),
+                yaxis_title="命中率（%）",
+                xaxis_title="知识点"
+            )
+            st.plotly_chart(fig_hit, use_container_width=True)
+
+        st.markdown("---")
+
+        chart3, chart4 = st.columns(2)
+
+        with chart3:
+            weak_df = pd.DataFrame({
+                "薄弱知识点": ["ADH缺失", "ANP缺失", "RAAS缺失"],
+                "人数": [adh, anp, raas]
+            })
+
+            fig_weak = px.bar(
+                weak_df,
+                x="薄弱知识点",
+                y="人数",
+                text="人数",
+                title="⚠️ 关键薄弱项统计"
+            )
+            fig_weak.update_traces(textposition="outside")
+            fig_weak.update_layout(
+                height=500,
+                title_font_size=24,
+                font=dict(size=18)
+            )
+            st.plotly_chart(fig_weak, use_container_width=True)
+
+        with chart4:
+            if top_missing_points:
+                top_df = pd.DataFrame(top_missing_points)
+                top_df.columns = ["失分点", "出现次数"]
+
+                fig_top = px.bar(
+                    top_df,
+                    x="失分点",
+                    y="出现次数",
+                    text="出现次数",
+                    title="📌 常见失分点 Top3"
+                )
+                fig_top.update_traces(textposition="outside")
+                fig_top.update_layout(
+                    height=500,
+                    title_font_size=24,
+                    font=dict(size=18),
+                    xaxis_title="失分点",
+                    yaxis_title="出现次数"
+                )
+                st.plotly_chart(fig_top, use_container_width=True)
+            else:
+                st.info("暂无可展示的失分点 Top3。")
+
+        st.markdown("---")
+        st.markdown('<div class="big-title">📝 代表性答案展示</div>', unsafe_allow_html=True)
+
+        ex1, ex2, ex3 = st.columns(3)
+
+        def render_examples(title, examples):
+            st.markdown(f'<div class="case-title">{title}</div>', unsafe_allow_html=True)
+
+            if not examples:
+                st.info("暂无对应答案。")
+                return
+
+            for ex in examples:
+                st.markdown(f"""
+                <div class="case-card">
+                    <div class="case-meta">学号：{ex["student_id"]} ｜ 等级：{ex["score_level"]} ｜ 时间：{ex["timestamp"]}</div>
+                    <div class="case-answer">{ex["user_answer"]}</div>
+                    <div class="case-tag"><b>命中知识点：</b>{ex["knowledge_hit"]}</div>
+                    <div class="case-tag"><b>缺失点：</b>{ex["missing_points"]}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        with ex1:
+            render_examples("🌟 优秀答案示例", best_examples)
+
+        with ex2:
+            render_examples("🟡 中等答案示例", mid_examples)
+
+        with ex3:
+            render_examples("🔍 典型薄弱答案", weak_examples)
 
         with st.expander("📋 查看原始表格数据"):
             st.dataframe(df_valid, use_container_width=True)
