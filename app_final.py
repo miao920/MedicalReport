@@ -9,8 +9,8 @@ st.set_page_config(page_title="课堂实时学情看板", layout="wide")
 # =============================
 # 飞书开放平台自建应用凭证
 # =============================
-FEISHU_APP_ID = "这里填你的真实 App ID".strip()
-FEISHU_APP_SECRET = "这里填你的真实 App Secret".strip()
+FEISHU_APP_ID = "cli_a9302c7babf89cd4".strip()
+FEISHU_APP_SECRET = "15hzGFmO4NIai0j9dKIAodLhXzaoWLZm".strip()
 
 # =============================
 # 多维表格信息
@@ -262,25 +262,26 @@ html, body, [class*="css"], .stApp {
 }
 
 .block-container {
-    padding-top: 1.0rem;
+    padding-top: 0.8rem;
     padding-bottom: 2rem;
     max-width: 96rem;
 }
 
 .top-header {
     text-align: center;
-    margin-top: 0.1rem;
-    margin-bottom: 0.8rem;
+    margin-top: 0.2rem;
+    margin-bottom: 0.4rem;
 }
 
 .top-title {
-    font-size: 42px;
-    line-height: 1.5;
-    font-weight: 900;
+    font-size: 34px;
+    line-height: 1.7;
+    font-weight: 800;
     color: #0f172a;
-    margin: 0;
-    letter-spacing: 1px;
-    white-space: nowrap;
+    margin: 0 auto;
+    letter-spacing: 0.5px;
+    white-space: normal;
+    word-break: break-word;
 }
 
 div[data-testid="metric-container"] {
@@ -359,16 +360,19 @@ div[data-testid="stExpander"] details summary p {
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-<div class="top-header">
-    <div class="top-title">班级实时学情分析</div>
-</div>
-""", unsafe_allow_html=True)
+title_col, btn_col = st.columns([8.8, 1.2])
 
-btn_left, btn_right = st.columns([8.5, 1.5])
-with btn_right:
-    refresh_clicked = st.button("刷新统计", type="primary")
+with title_col:
+    st.markdown("""
+    <div class="top-header">
+        <div class="top-title">班级实时学情分析</div>
+    </div>
+    """, unsafe_allow_html=True)
 
+with btn_col:
+    st.write("")
+    st.write("")
+    refresh_clicked = st.button("刷新统计", type="primary", use_container_width=True)
 if refresh_clicked:
     try:
         with st.spinner("正在从飞书读取真实数据..."):
