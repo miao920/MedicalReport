@@ -5,13 +5,14 @@ import plotly.express as px
 import json
 
 st.set_page_config(page_title="课堂实时学情看板", layout="wide")
-tab1, tab2 = st.tabs(["教师看板", "学生端"])
 
 # =============================
 # 飞书开放平台应用凭证
+# 这里一定要填“飞书开放平台自建应用”的真实值
+# 不是 app_token，不是 table_id
 # =============================
-FEISHU_APP_ID = "这里填你的 app_id"
-FEISHU_APP_SECRET = "这里填你的 app_secret"
+FEISHU_APP_ID = "cli_a9302c7babf89cd4".strip()
+FEISHU_APP_SECRET = "15hzGFmO4NIai0j9dKIAodLhXzaoWLZm".strip()
 
 # =============================
 # 多维表格信息
@@ -33,12 +34,20 @@ def get_tenant_access_token():
     resp.raise_for_status()
     data = resp.json()
 
+    # 调试信息：先确认 token 接口本身是否通了
+    st.write("### token接口返回")
+    st.json(data)
+
     if data.get("code") != 0:
-        raise Exception(f"获取 tenant_access_token 失败: {data}")
+        raise Exception(
+            "获取 tenant_access_token 失败。"
+            "请检查 app_id / app_secret 是否填写为飞书开放平台自建应用的真实值，"
+            f"当前返回：{data}"
+        )
 
     token = data.get("tenant_access_token")
     if not token:
-        raise Exception(f"tenant_access_token 为空: {data}")
+        raise Exception(f"tenant_access_token 为空：{data}")
 
     return token
 
@@ -54,9 +63,7 @@ def search_all_records(access_token):
     page_token = None
 
     while True:
-        payload = {
-            "page_size": 500
-        }
+        payload = {"page_size": 500}
         if page_token:
             payload["page_token"] = page_token
 
@@ -65,7 +72,7 @@ def search_all_records(access_token):
         data = resp.json()
 
         if data.get("code") != 0:
-            raise Exception(f"读取多维表格失败: {data}")
+            raise Exception(f"读取多维表格失败：{data}")
 
         items = data.get("data", {}).get("items", [])
         all_items.extend(items)
